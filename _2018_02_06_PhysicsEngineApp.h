@@ -5,6 +5,7 @@
 
 namespace Physebs {
 	class Rigidbody;
+	class Scene;
 }
 class Camera;
 
@@ -28,5 +29,8 @@ protected:
 	glm::mat4	m_viewMatrix;
 	glm::mat4	m_projectionMatrix;
 
-	Physebs::Rigidbody* m_object = nullptr;
+	// Physics
+	Physebs::Rigidbody* m_object	= nullptr;
+	Physebs::Scene*		m_scene		= nullptr;
+
 };

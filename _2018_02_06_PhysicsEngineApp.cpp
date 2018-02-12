@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include "Physics\Rigidbody.h"
+#include "Physics\Scene.h"
 #include "Camera\Camera.h"
 
 using glm::vec3;
@@ -37,8 +38,12 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_camera->SetPosition(glm::vec3(10, 10, 10));
 	m_camera->Lookat(glm::vec3(0, 0, 0));
 
-	// Create an object
+	// Make a scene (ha-ha)
+	m_scene = new Scene();
+	
+	// Create and add object to scene
 	m_object = new Rigidbody(glm::vec3(), 2.f);
+	m_scene->AddObject(m_object);
 
 	return true;
 }
@@ -46,7 +51,6 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 void _2018_02_06_PhysicsEngineApp::shutdown() {
 
 	delete m_camera;
-	delete m_object;
 
 	Gizmos::destroy();
 }
@@ -55,6 +59,11 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 	// wipe the gizmos clean for this frame
 	Gizmos::clear();
+
+	glm::vec3 currentPos = m_object->GetPos();
+
+	//m_camera->SetPosition(glm::vec3(currentPos.x, currentPos.y + 100.f, currentPos.z - 100.f));
+	m_camera->Lookat(m_object->GetPos());
 
 	m_camera->Update(deltaTime);
 
@@ -85,7 +94,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 	// Object control
 	glm::vec3 movementForce = glm::vec3();
-	static const float maxSpeed = 200.f;
+	static const float maxSpeed = 1000.f;
 
 	if (input->isKeyDown(aie::INPUT_KEY_UP)) {
 		movementForce.z += maxSpeed * deltaTime;
