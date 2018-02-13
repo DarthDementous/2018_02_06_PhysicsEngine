@@ -3,9 +3,11 @@
 #include "Input.h"
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
-#include "Physics\Rigidbody.h"
+#include "Physics\Sphere.h"
 #include "Physics\Scene.h"
 #include "Camera\Camera.h"
+#include <algorithm>
+#include <imgui.h>
 
 using glm::vec3;
 using glm::vec4;
@@ -40,18 +42,32 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 
 	// Make a scene (ha-ha)
 	m_scene = new Scene();
+	m_scene->SetGlobalForce(glm::vec3(10.f, 0, 0));
 	
-	// Create and add object to scene
-	m_object = new Rigidbody(glm::vec3(), 2.f);
-	m_scene->AddObject(m_object);
+	/// Create and add objects to scene
+	static const float massStep = 4.f;
+	
+	// Default weight
+	m_scene->AddObject(new Sphere(DEFAULT_MASS, glm::vec2(16.f, 16.f), 
+		glm::vec3(0, DEFAULT_MASS, 0), DEFAULT_MASS, 4.f, false, glm::vec4(1.f, 0.f, 0.f, 1.f)));
 
+	// Light weight
+	float mass = std::max(DEFAULT_MASS - massStep, 1.f);		// Ensure mass does not end up negative or else object will accelerate in the wrong direction
+	m_scene->AddObject(new Sphere(mass, glm::vec2(16.f, 16.f), 
+		glm::vec3(massStep, mass - massStep, 0), mass, 4.f, true, glm::vec4(0.f, 1.f, 0.f, 1.f)));
+
+	// Heavy weight
+	m_scene->AddObject(new Sphere(DEFAULT_MASS + massStep, glm::vec2(16.f, 16.f), 
+		glm::vec3(-massStep, DEFAULT_MASS + massStep, 0), DEFAULT_MASS + massStep, 4.f, true, glm::vec4(0.f, 0.f, 1.f, 1.f)));
+	
 	return true;
 }
 
 void _2018_02_06_PhysicsEngineApp::shutdown() {
 
 	delete m_camera;
-
+	delete m_scene;
+	
 	Gizmos::destroy();
 }
 
@@ -60,14 +76,66 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	// wipe the gizmos clean for this frame
 	Gizmos::clear();
 
-	glm::vec3 currentPos = m_object->GetPos();
+	// quit if we press escape
+	aie::Input* input = aie::Input::getInstance();
 
-	//m_camera->SetPosition(glm::vec3(currentPos.x, currentPos.y + 100.f, currentPos.z - 100.f));
-	m_camera->Lookat(m_object->GetPos());
+#pragma region IMGUI
+	//ImGui::Begin("Gravity Debug");
+
+	//glm::vec3 vel = m_scene->GetObjects()[0]->GetPos();
+	//ImGui::Text("Object #1 Position: %.3f, %.3f, %.3f", vel.x, vel.y, vel.z);
+
+	/// TODO: Add object creation parameters
+	ImGui::Begin("Object Creator");
+	static float pos[3]		= { 0.f, 0.f, 0.f };
+	static float mass		= 0.f;
+	static float friction	= 0.f;
+	static float color[4]	= { 0.f, 0.f, 0.f };
+
+
+	ImGui::InputFloat3("Object Position: ", pos, 2);
+	ImGui::InputFloat("Object Mass: ", &mass, 0.f, 0.f, 2);
+	ImGui::InputFloat("Object Friction: ", &friction, 0.f, 0.f, 2);
+	ImGui::ColorEdit4("Object Color: ", color);
+	
+	ImGui::End();
+#pragma endregion
+
+
+	/// Object control
+	//glm::vec3 movementForce = glm::vec3();
+	//static const float maxSpeed = 1000.f;
+
+	//if (input->isKeyDown(aie::INPUT_KEY_UP)) {
+	//	movementForce.z += maxSpeed * deltaTime;
+	//}
+	//if (input->isKeyDown(aie::INPUT_KEY_DOWN)) {
+	//	movementForce.z -= maxSpeed * deltaTime;
+	//}
+	//if (input->isKeyDown(aie::INPUT_KEY_LEFT)) {
+	//	movementForce.x += maxSpeed * deltaTime;
+	//}
+	//if (input->isKeyDown(aie::INPUT_KEY_RIGHT)) {
+	//	movementForce.x -= maxSpeed * deltaTime;
+	//}
+
+	//m_scene->SetGlobalForce(movementForce);
+
+	//m_object->ApplyForce(movementForce);
+
+	//m_object->Update(deltaTime);
+
+	/// Scene
+	m_scene->ApplyGlobalForce();
+	m_scene->FixedUpdate(deltaTime);
+
+	/// Camera
+	//glm::vec3 currentPos = m_object->GetPos();
+
+	//m_camera->SetPosition(glm::vec3(currentPos.x, currentPos.y, currentPos.z + 10.f));
+	//m_camera->Lookat(m_object->GetPos());
 
 	m_camera->Update(deltaTime);
-
-	aie::Gizmos::addSphere(m_object->GetPos(), m_object->GetMass(), 8, 8, glm::vec4(1.f, 0.f, 0.f, 1.f));
 
 #pragma region 3D Template Code
 	// draw a simple grid with gizmos
@@ -75,41 +143,17 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	vec4 black(0, 0, 0, 1);
 	for (int i = 0; i < 21; ++i) {
 		Gizmos::addLine(vec3(-10 + i, 0, 10),
-						vec3(-10 + i, 0, -10),
-						i == 10 ? white : black);
+			vec3(-10 + i, 0, -10),
+			i == 10 ? white : black);
 		Gizmos::addLine(vec3(10, 0, -10 + i),
-						vec3(-10, 0, -10 + i),
-						i == 10 ? white : black);
+			vec3(-10, 0, -10 + i),
+			i == 10 ? white : black);
 	}
 
 	// add a transform so that we can see the axis
 	Gizmos::addTransform(mat4(1));
 
 #pragma endregion
-	
-	// quit if we press escape
-	aie::Input* input = aie::Input::getInstance();
-
-	m_object->Update(deltaTime);
-
-	// Object control
-	glm::vec3 movementForce = glm::vec3();
-	static const float maxSpeed = 1000.f;
-
-	if (input->isKeyDown(aie::INPUT_KEY_UP)) {
-		movementForce.z += maxSpeed * deltaTime;
-	}
-	if (input->isKeyDown(aie::INPUT_KEY_DOWN)) {
-		movementForce.z -= maxSpeed * deltaTime;
-	}
-	if (input->isKeyDown(aie::INPUT_KEY_LEFT)) {
-		movementForce.x += maxSpeed * deltaTime;
-	}
-	if (input->isKeyDown(aie::INPUT_KEY_RIGHT)) {
-		movementForce.x -= maxSpeed * deltaTime;
-	}
-
-	m_object->ApplyForce(movementForce);
 
 	if (input->isKeyDown(aie::INPUT_KEY_ESCAPE))
 		quit();
@@ -120,6 +164,9 @@ void _2018_02_06_PhysicsEngineApp::draw() {
 	// wipe the screen to the background colour
 	clearScreen();
 
+	/// Scene
+	m_scene->Draw();
+	
 	Gizmos::draw(m_camera->GetProjectionView());
 
 #pragma region 3D Template Code
