@@ -22,6 +22,7 @@ namespace Physebs {
 		virtual ~Rigidbody() = 0;	// Inherited classes must define a destructor
 
 		virtual void ApplyForce(const glm::vec3& a_force);
+		virtual void ApplyImpulseForce(const glm::vec3& a_force);
 
 		virtual void Update(float a_dt);
 		virtual void Draw() = 0;

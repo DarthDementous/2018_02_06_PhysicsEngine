@@ -1,6 +1,7 @@
 #include "Physics\Rigidbody.h"
 #include <Gizmos.h>
 #include <glm/vec4.hpp>
+#include <glm/ext.hpp>
 
 using namespace Physebs;
 
@@ -33,6 +34,16 @@ void Rigidbody::ApplyForce(const glm::vec3& a_force)
 	m_accel += a_force / m_mass;
 }
 
+/**
+*	@brief Instantly apply movement for object instead of using deltaTime and acceleration.
+*	@param a_force is the impulse force to enact on the object.
+*	@return void.
+*/
+void Rigidbody::ApplyImpulseForce(const glm::vec3 & a_force)
+{
+	m_vel += a_force;
+}
+
 void Rigidbody::Update(float a_dt)
 {
 	// Static rigidbodies do not move
@@ -42,6 +53,12 @@ void Rigidbody::Update(float a_dt)
 
 		// Calculate velocity
 		m_vel += m_accel * a_dt;
+
+		// Truncate velocity with an epsilon
+		if (glm::length(m_vel) < EPSILON) {
+			// Zero out velocity to avoid floating point errors
+			m_vel = glm::vec3();
+		}
 
 		// Calculate position
 		m_pos += m_vel * a_dt;

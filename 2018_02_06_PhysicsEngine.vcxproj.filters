@@ -33,6 +33,9 @@
     <ClCompile Include="SRC\Physics\Sphere.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Visual Studio Projects\aieBootstrap-master\dependencies\imgui\imgui_demo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="_2018_02_06_PhysicsEngineApp.h">

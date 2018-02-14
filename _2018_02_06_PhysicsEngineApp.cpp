@@ -42,23 +42,26 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 
 	// Make a scene (ha-ha)
 	m_scene = new Scene();
-	m_scene->SetGlobalForce(glm::vec3(10.f, 0, 0));
+	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
 	/// Create and add objects to scene
 	static const float massStep = 4.f;
 	
-	// Default weight
-	m_scene->AddObject(new Sphere(DEFAULT_MASS, glm::vec2(16.f, 16.f), 
-		glm::vec3(0, DEFAULT_MASS, 0), DEFAULT_MASS, 4.f, false, glm::vec4(1.f, 0.f, 0.f, 1.f)));
+	// Default weight (RED)
+	/*m_scene->AddObject(new Sphere(DEFAULT_MASS, glm::vec2(16.f, 16.f), 
+		glm::vec3(0, DEFAULT_MASS, 0), DEFAULT_MASS, 4.f, true, glm::vec4(1.f, 0.f, 0.f, 1.f)));*/
 
-	// Light weight
+	// Light weight (GREEN)
 	float mass = std::max(DEFAULT_MASS - massStep, 1.f);		// Ensure mass does not end up negative or else object will accelerate in the wrong direction
 	m_scene->AddObject(new Sphere(mass, glm::vec2(16.f, 16.f), 
 		glm::vec3(massStep, mass - massStep, 0), mass, 4.f, true, glm::vec4(0.f, 1.f, 0.f, 1.f)));
 
-	// Heavy weight
-	m_scene->AddObject(new Sphere(DEFAULT_MASS + massStep, glm::vec2(16.f, 16.f), 
-		glm::vec3(-massStep, DEFAULT_MASS + massStep, 0), DEFAULT_MASS + massStep, 4.f, true, glm::vec4(0.f, 0.f, 1.f, 1.f)));
+	// Heavy weight (BLUE)
+	Sphere* bigboi = new Sphere(DEFAULT_MASS + massStep, glm::vec2(16.f, 16.f),
+		glm::vec3(-massStep, DEFAULT_MASS + massStep, 0), DEFAULT_MASS + massStep, 4.f, true, glm::vec4(0.f, 0.f, 1.f, 1.f));
+	bigboi->ApplyImpulseForce(glm::vec3(10.f, 0.f, 0.f));
+
+	m_scene->AddObject(bigboi);
 	
 	return true;
 }
@@ -82,21 +85,23 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 #pragma region IMGUI
 	//ImGui::Begin("Gravity Debug");
 
-	//glm::vec3 vel = m_scene->GetObjects()[0]->GetPos();
-	//ImGui::Text("Object #1 Position: %.3f, %.3f, %.3f", vel.x, vel.y, vel.z);
+	glm::vec3 vel = m_scene->GetObjects()[1]->GetVel();
+	ImGui::Text("Heavy Object #1 (Blue) Velocity: %.6f, %.6f, %.6f", vel.x, vel.y, vel.z);
 
 	/// TODO: Add object creation parameters
+	//ImGui::ShowTestWindow();
 	ImGui::Begin("Object Creator");
+
 	static float pos[3]		= { 0.f, 0.f, 0.f };
 	static float mass		= 0.f;
 	static float friction	= 0.f;
 	static float color[4]	= { 0.f, 0.f, 0.f };
 
 
-	ImGui::InputFloat3("Object Position: ", pos, 2);
-	ImGui::InputFloat("Object Mass: ", &mass, 0.f, 0.f, 2);
-	ImGui::InputFloat("Object Friction: ", &friction, 0.f, 0.f, 2);
-	ImGui::ColorEdit4("Object Color: ", color);
+	ImGui::InputFloat3("Position", pos, 2);
+	ImGui::InputFloat("Mass", &mass, 0.f, 0.f, 2);
+	ImGui::InputFloat("Friction", &friction, 0.f, 0.f, 2);
+	ImGui::ColorEdit4("Color", color);
 	
 	ImGui::End();
 #pragma endregion

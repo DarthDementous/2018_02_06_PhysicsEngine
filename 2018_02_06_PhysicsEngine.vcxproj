@@ -164,6 +164,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Visual Studio Projects\aieBootstrap-master\dependencies\imgui\imgui_demo.cpp" />
     <ClCompile Include="SRC\Camera\Camera.cpp" />
     <ClCompile Include="SRC\Physics\Rigidbody.cpp" />
     <ClCompile Include="SRC\Physics\Scene.cpp" />
