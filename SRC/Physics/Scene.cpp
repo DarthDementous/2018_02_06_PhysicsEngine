@@ -157,15 +157,17 @@ void Scene::DetectCollisions()
 */
 void Scene::ResolveCollisions() {
 	// TODO: Replace simple but naive way of resolving collisions
+	static float restitution = 0.5f;	// TODO: Place restitution variable into Rigidbody
+
 	for (auto coll : m_collisions) {
 		// TODO: Need to separate objects before knocking them back so they are no longer colliding
 
-		// Determine knockback force from mass and velocity from perspective of each object. WARNING: Only works in one direction
-		glm::vec3 knockbackForceA = coll.other->GetMass() * coll.other->GetVel();
-		glm::vec3 knockbackForceB = coll.actor->GetMass() * coll.actor->GetVel();
+		//// Determine knockback force from mass and velocity from perspective of each object. WARNING: Only works in one direction
+		//glm::vec3 knockbackForceA = coll.other->GetMass() * coll.other->GetVel();
+		//glm::vec3 knockbackForceB = coll.actor->GetMass() * coll.actor->GetVel();
 
-		coll.actor->ApplyForce(knockbackForceA);
-		coll.other->ApplyForce(knockbackForceB);
+		//coll.actor->ApplyForce(knockbackForceA);
+		//coll.other->ApplyForce(knockbackForceB);
 
 		/*
 		1. Create a vector from A to B
@@ -178,6 +180,17 @@ void Scene::ResolveCollisions() {
 		- Use resources formula to calculate j
 		- Add ApplyImpulse function to object
 		*/
+		glm::vec3 collisionNormal	= glm::normalize(coll.actor->GetPos() + coll.other->GetPos());		// What direction to apply impulse knockback force to the objects in
+		glm::vec3 relativeVel		= coll.actor->GetVel() - coll.other->GetVel();						// Modify the ratio of impulse force
+
+		// Use collision resolution equation to find scale of impulse knockback force
+		float impulseScale =
+			glm::dot(-(1 + restitution) * relativeVel, collisionNormal) /
+			glm::dot(collisionNormal, collisionNormal * (1 / coll.actor->GetMass() + 1 / coll.other->GetMass()));
+
+		// Apply impulse resolution force along appropriate direction for each object
+		coll.actor->ApplyImpulseForce(impulseScale * collisionNormal);
+		coll.other->ApplyImpulseForce(impulseScale * -collisionNormal);
 	}
 
 	// Collisions have been resolved for this frame, clear all recorded collisions

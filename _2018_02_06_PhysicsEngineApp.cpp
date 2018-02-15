@@ -44,24 +44,26 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_scene = new Scene();
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
-	/// Create and add objects to scene
-	static const float massStep = 4.f;
-	
-	// Default weight (RED)
-	/*m_scene->AddObject(new Sphere(DEFAULT_MASS, glm::vec2(16.f, 16.f), 
-		glm::vec3(0, DEFAULT_MASS, 0), DEFAULT_MASS, 4.f, true, glm::vec4(1.f, 0.f, 0.f, 1.f)));*/
+#pragma region Manual Object Creation
+	//static const float massStep = 4.f;
 
-	// Light weight (GREEN)
-	float mass = std::max(DEFAULT_MASS - massStep, 1.f);		// Ensure mass does not end up negative or else object will accelerate in the wrong direction
-	m_scene->AddObject(new Sphere(mass, glm::vec2(16.f, 16.f), 
-		glm::vec3(massStep, mass - massStep, 0), mass, 4.f, true, glm::vec4(0.f, 1.f, 0.f, 1.f)));
+	//// Default weight (RED)
+	///*m_scene->AddObject(new Sphere(DEFAULT_MASS, glm::vec2(16.f, 16.f),
+	//glm::vec3(0, DEFAULT_MASS, 0), DEFAULT_MASS, 4.f, true, glm::vec4(1.f, 0.f, 0.f, 1.f)));*/
 
-	// Heavy weight (BLUE)
-	Sphere* bigboi = new Sphere(DEFAULT_MASS + massStep, glm::vec2(16.f, 16.f),
-		glm::vec3(-massStep, DEFAULT_MASS + massStep, 0), DEFAULT_MASS + massStep, 4.f, true, glm::vec4(0.f, 0.f, 1.f, 1.f));
-	bigboi->ApplyImpulseForce(glm::vec3(10.f, 0.f, 0.f));
+	//// Light weight (GREEN)
+	//float mass = std::max(DEFAULT_MASS - massStep, 1.f);		// Ensure mass does not end up negative or else object will accelerate in the wrong direction
+	//m_scene->AddObject(new Sphere(mass, glm::vec2(16.f, 16.f),
+	//	glm::vec3(massStep, mass - massStep, 0), mass, 4.f, true, glm::vec4(0.f, 1.f, 0.f, 1.f)));
 
-	m_scene->AddObject(bigboi);
+	//// Heavy weight (BLUE)
+	//Sphere* bigboi = new Sphere(DEFAULT_MASS + massStep, glm::vec2(16.f, 16.f),
+	//	glm::vec3(-massStep, DEFAULT_MASS + massStep, 0), DEFAULT_MASS + massStep, 4.f, true, glm::vec4(0.f, 0.f, 1.f, 1.f));
+	//bigboi->ApplyImpulseForce(glm::vec3(10.f, 0.f, 0.f));
+
+	//m_scene->AddObject(bigboi);
+#pragma endregion
+
 	
 	return true;
 }
@@ -85,25 +87,67 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 #pragma region IMGUI
 	//ImGui::Begin("Gravity Debug");
 
-	glm::vec3 vel = m_scene->GetObjects()[1]->GetVel();
-	ImGui::Text("Heavy Object #1 (Blue) Velocity: %.6f, %.6f, %.6f", vel.x, vel.y, vel.z);
+	//glm::vec3 currentObjVel = m_scene->GetObjects()[1]->GetVel();
+	//ImGui::Text("Heavy Object #1 (Blue) Velocity: %.6f, %.6f, %.6f", currentObjVel.x, currentObjVel.y, currentObjVel.z);
 
-	/// TODO: Add object creation parameters
-	//ImGui::ShowTestWindow();
+	/// Object Creator GUI
+#if 0
+	ImGui::ShowTestWindow();
+#else 
 	ImGui::Begin("Object Creator");
 
-	static float pos[3]		= { 0.f, 0.f, 0.f };
-	static float mass		= 0.f;
-	static float friction	= 0.f;
-	static float color[4]	= { 0.f, 0.f, 0.f };
+	// Make variables static so they're only defined once so their values at their addresses can be changed after by user input
+	static float	globalForce[3] = { 0.f, 0.f, 0.f };		// TODO: Put this into seperate section from Object Creator in ImGui
 
+	static float	pos[3]		= { 0.f, 0.f, 0.f };
+	static float	vel[3]		= { 0.f, 0.f, 0.f };
+	static float	dim[2]		= { DEFAULT_SPHERE.x, DEFAULT_SPHERE.y };
+	static float	radius		= DEFAULT_MASS;
+	static float	mass		= DEFAULT_MASS;
+	static float	friction	= DEFAULT_FRICTION;
+	static float	color[4]	= { 0.f, 0.f, 0.f, 1.f };
+	static bool		b_dynamic	= true;
+	static bool		b_impulse	= false;
+
+	ImGui::InputFloat3("Scene Global Force", globalForce, 2);
 
 	ImGui::InputFloat3("Position", pos, 2);
-	ImGui::InputFloat("Mass", &mass, 0.f, 0.f, 2);
-	ImGui::InputFloat("Friction", &friction, 0.f, 0.f, 2);
+	ImGui::InputFloat3("Velocity", vel, 2);
+	ImGui::InputFloat2("Dimensions", dim, 2);
+	ImGui::InputFloat("Radius", &radius, 1.f, 0.f, 2);
+	ImGui::InputFloat("Mass", &mass, 1.f, 0.f, 2);
+	ImGui::InputFloat("Friction", &friction, 1.f, 0.f, 2);
 	ImGui::ColorEdit4("Color", color);
+	ImGui::Checkbox("Is Dynamic", &b_dynamic);
+	ImGui::Checkbox("Velocity is impulse", &b_impulse);
+
+	// Object spawn button has been clicked
+	if (ImGui::SmallButton("Spawn Sphere")) {
+		// Grab data from static input variables and create object from it
+		glm::vec3 currentPos	= glm::vec3(pos[0], pos[1], pos[2]);
+		glm::vec3 currentVel	= glm::vec3(vel[0], vel[1], vel[2]);
+		glm::vec2 currentDim	= glm::vec2(dim[0], dim[1]);
+		glm::vec4 currentColor	= glm::vec4(color[0], color[1], color[2], color[3]);
+
+		Sphere* newObj = new Sphere(radius, currentDim, currentPos, mass, friction, b_dynamic, currentColor);
+
+		// Object velocity is not impulse, apply over time
+		if (!b_impulse) {
+			newObj->SetVel(currentVel);
+		}
+		// Object velocity is impulse, apply instantly
+		else {
+			newObj->ApplyImpulseForce(currentVel);
+		}
+
+		// Add created object to scene
+		m_scene->AddObject(newObj);
+	}
+
+	glm::vec3 currentGlobalForce = glm::vec3(globalForce[0], globalForce[1], globalForce[2]);
 	
 	ImGui::End();
+#endif
 #pragma endregion
 
 
@@ -131,6 +175,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	//m_object->Update(deltaTime);
 
 	/// Scene
+	m_scene->SetGlobalForce(currentGlobalForce);
 	m_scene->ApplyGlobalForce();
 	m_scene->FixedUpdate(deltaTime);
 

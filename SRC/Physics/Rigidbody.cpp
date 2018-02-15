@@ -35,13 +35,13 @@ void Rigidbody::ApplyForce(const glm::vec3& a_force)
 }
 
 /**
-*	@brief Instantly apply movement for object instead of using deltaTime and acceleration.
+*	@brief Instantly apply movement to object velocity instead of acceleration, treating it as movement per frame instead of per second.
 *	@param a_force is the impulse force to enact on the object.
 *	@return void.
 */
 void Rigidbody::ApplyImpulseForce(const glm::vec3 & a_force)
 {
-	m_vel += a_force;
+	m_vel += a_force / m_mass;
 }
 
 void Rigidbody::Update(float a_dt)
