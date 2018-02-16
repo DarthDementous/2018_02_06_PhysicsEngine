@@ -139,10 +139,15 @@ void Scene::DetectCollisions()
 			Sphere* actor = static_cast<Sphere*>(*actor_iter);
 			Sphere* other = static_cast<Sphere*>(*other_iter);
 
+			float overlap = 0.f;		// How much shapes overlap each other (for collision resolution)
+
 			if (actor != nullptr && other != nullptr) {
 				
 				if (IsColliding_Sphere_Sphere(actor, other)) {
-					m_collisions.push_back(Collision(actor, other));
+					// Find overlap by taking radii of spheres into account between distance of origins
+					overlap = (actor->GetRadius() + other->GetRadius()) - glm::distance(actor->GetPos(), other->GetPos());		// (Radii - distance) NOT (distance - radii) or there will be negative cases
+
+					m_collisions.push_back(Collision(actor, other, overlap));
 				}
 
 			}
@@ -180,17 +185,29 @@ void Scene::ResolveCollisions() {
 		- Use resources formula to calculate j
 		- Add ApplyImpulse function to object
 		*/
-		glm::vec3 collisionNormal	= glm::normalize(coll.actor->GetPos() + coll.other->GetPos());		// What direction to apply impulse knockback force to the objects in
-		glm::vec3 relativeVel		= coll.actor->GetVel() - coll.other->GetVel();						// Modify the ratio of impulse force
+		glm::vec3 collisionNormal		= coll.actor->GetPos() + coll.other->GetPos();				// What direction to apply impulse knockback force to the objects in
 
-		// Use collision resolution equation to find scale of impulse knockback force
-		float impulseScale =
-			glm::dot(-(1 + restitution) * relativeVel, collisionNormal) /
-			glm::dot(collisionNormal, collisionNormal * (1 / coll.actor->GetMass() + 1 / coll.other->GetMass()));
+		// Objects are not completely static (collision vec length means not dividing by 0)
+		if (glm::length(collisionNormal) != 0) {
+			collisionNormal = glm::normalize(collisionNormal);
 
-		// Apply impulse resolution force along appropriate direction for each object
-		coll.actor->ApplyImpulseForce(impulseScale * collisionNormal);
-		coll.other->ApplyImpulseForce(impulseScale * -collisionNormal);
+			/// Use half of the overlap value (half push-back for each object) to set their position back along the appropriate collision normal so objects are no longer touching
+			coll.actor->SetPos(coll.actor->GetPos() + ((coll.overlap / 2) * collisionNormal));
+			coll.other->SetPos(coll.other->GetPos() + ((coll.overlap / 2) * -collisionNormal));
+
+			/// Use collision resolution equation to find scale of impulse knockback force
+			glm::vec3 relativeVel = coll.actor->GetVel() - coll.other->GetVel();						// Modify the ratio of impulse force
+
+			float impulseScale =
+				glm::dot(-(1 + restitution) * relativeVel, collisionNormal) /
+				glm::dot(collisionNormal, collisionNormal * (1 / coll.actor->GetMass() + 1 / coll.other->GetMass()));
+
+			// Apply impulse resolution force along appropriate direction for each object
+			coll.actor->ApplyImpulseForce(impulseScale * collisionNormal);
+			coll.other->ApplyImpulseForce(impulseScale * -collisionNormal);
+		}
+
+		
 	}
 
 	// Collisions have been resolved for this frame, clear all recorded collisions

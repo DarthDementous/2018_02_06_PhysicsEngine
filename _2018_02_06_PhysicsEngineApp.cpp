@@ -100,19 +100,19 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	static float	globalForce[3] = { 0.f, 0.f, 0.f };		// TODO: Put this into seperate section from Object Creator in ImGui
 
 	static float	pos[3]		= { 0.f, 0.f, 0.f };
-	static float	vel[3]		= { 0.f, 0.f, 0.f };
+	static float	force[3]	= { 0.f, 0.f, 0.f };
 	static float	dim[2]		= { DEFAULT_SPHERE.x, DEFAULT_SPHERE.y };
 	static float	radius		= DEFAULT_MASS;
 	static float	mass		= DEFAULT_MASS;
 	static float	friction	= DEFAULT_FRICTION;
 	static float	color[4]	= { 0.f, 0.f, 0.f, 1.f };
 	static bool		b_dynamic	= true;
-	static bool		b_impulse	= false;
+	static bool		b_impulse	= true;
 
 	ImGui::InputFloat3("Scene Global Force", globalForce, 2);
 
 	ImGui::InputFloat3("Position", pos, 2);
-	ImGui::InputFloat3("Velocity", vel, 2);
+	ImGui::InputFloat3("Starting Force", force, 2);
 	ImGui::InputFloat2("Dimensions", dim, 2);
 	ImGui::InputFloat("Radius", &radius, 1.f, 0.f, 2);
 	ImGui::InputFloat("Mass", &mass, 1.f, 0.f, 2);
@@ -125,7 +125,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	if (ImGui::SmallButton("Spawn Sphere")) {
 		// Grab data from static input variables and create object from it
 		glm::vec3 currentPos	= glm::vec3(pos[0], pos[1], pos[2]);
-		glm::vec3 currentVel	= glm::vec3(vel[0], vel[1], vel[2]);
+		glm::vec3 currentForce	= glm::vec3(force[0], force[1], force[2]);
 		glm::vec2 currentDim	= glm::vec2(dim[0], dim[1]);
 		glm::vec4 currentColor	= glm::vec4(color[0], color[1], color[2], color[3]);
 
@@ -133,11 +133,11 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 		// Object velocity is not impulse, apply over time
 		if (!b_impulse) {
-			newObj->SetVel(currentVel);
+			newObj->ApplyForce(currentForce);
 		}
 		// Object velocity is impulse, apply instantly
 		else {
-			newObj->ApplyImpulseForce(currentVel);
+			newObj->ApplyImpulseForce(currentForce);
 		}
 
 		// Add created object to scene

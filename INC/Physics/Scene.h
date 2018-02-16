@@ -12,10 +12,12 @@ namespace Physebs {
 	*	@brief Structure for holding collision data.
 	*/
 	struct Collision {
-		Collision(Rigidbody* a_actor, Rigidbody* a_other) : actor(a_actor), other(a_other) {}
+		Collision(Rigidbody* a_actor, Rigidbody* a_other, float a_overlap) : actor(a_actor), other(a_other), overlap(a_overlap) {}
 
 		Rigidbody* actor;
 		Rigidbody* other;
+
+		float overlap;		// The overlap between the colliding object's shapes
 	};
 
 	/**
