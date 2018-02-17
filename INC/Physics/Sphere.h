@@ -16,8 +16,13 @@ namespace Physebs {
 
 		virtual void Draw();
 
-		const float GetRadius() const				{ return m_radius; }
-		void		SetRadius(const float a_radius)	{ m_radius = a_radius; }
+		float*				GetRadiusRef() 									{ return &m_radius; }
+		float				GetRadius() const								{ return m_radius; }
+		void				SetRadius(const float a_radius)					{ m_radius = a_radius; }
+
+		int*				GetDimensionsRef()								{ return &m_dimensions.x; }
+		const glm::ivec2&	GetDimensions() const							{ return m_dimensions; }
+		void				SetDimensions(const glm::vec2& a_dimensions)	{ m_dimensions = a_dimensions; }
 	protected:
 		float m_radius;
 		

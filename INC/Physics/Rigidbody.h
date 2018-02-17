@@ -27,6 +27,7 @@ namespace Physebs {
 		virtual void Update(float a_dt);
 		virtual void Draw() = 0;
 
+		float*				GetPosRef()							{ return &m_pos.x; }
 		const glm::vec3&	GetPos() const						{ return m_pos; }
 		void				SetPos(const glm::vec3& a_pos)		{ m_pos = a_pos; }
 
@@ -36,10 +37,23 @@ namespace Physebs {
 		const glm::vec3&	GetAccel() const					{ return m_accel; }
 		void				SetAccel(const glm::vec3& a_accel)	{ m_accel = a_accel; }
 
-		const float			GetMass() const						{ return m_mass; }
+		float*				GetColorRef()						{ return &m_color.r; }
+		const glm::vec4&	GetColor() const					{ return m_color; }
+		void				SetColor(const glm::vec4& a_color)	{ m_color = a_color; }
+
+		float*				GetMassRef()						{ return &m_mass; }
+		float				GetMass() const						{ return m_mass; }
 		void				SetMass(float a_mass)				{ m_mass = a_mass; }
 
-		const eShape		GetShape() const					{ return m_shape; }
+		float*				GetFrictRef()						{ return &m_frict; }
+		float				GetFrict() const					{ return m_frict; }
+		void				SetFrict(float a_frict)				{ m_frict = a_frict; }
+
+		eShape				GetShape() const					{ return m_shape; }
+
+		bool*				GetIsDynamicRef()					{ return &b_dynamic; }
+		bool				GetIsDynamic() const				{ return b_dynamic; }
+		void				SetIsDynamic(bool a_isDynamic)		{ b_dynamic = a_isDynamic; }
 	protected:
 		glm::vec3 m_pos;
 		glm::vec3 m_vel;
