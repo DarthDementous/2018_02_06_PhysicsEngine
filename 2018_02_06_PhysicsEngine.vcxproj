@@ -166,6 +166,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\Visual Studio Projects\aieBootstrap-master\dependencies\imgui\imgui_demo.cpp" />
     <ClCompile Include="SRC\Camera\Camera.cpp" />
+    <ClCompile Include="SRC\Physics\Plane.cpp" />
     <ClCompile Include="SRC\Physics\Rigidbody.cpp" />
     <ClCompile Include="SRC\Physics\Scene.cpp" />
     <ClCompile Include="SRC\Physics\Sphere.cpp" />
@@ -175,6 +176,7 @@
   <ItemGroup>
     <ClInclude Include="INC\Camera\Camera.h" />
     <ClInclude Include="INC\PhysebsUtility.h" />
+    <ClInclude Include="INC\Physics\Plane.h" />
     <ClInclude Include="INC\Physics\Rigidbody.h" />
     <ClInclude Include="INC\Physics\Scene.h" />
     <ClInclude Include="INC\Physics\Sphere.h" />

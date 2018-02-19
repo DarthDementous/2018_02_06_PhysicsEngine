@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include "Physics\Sphere.h"
+#include "Physics\Plane.h"
 #include "Physics\Scene.h"
 #include "Camera\Camera.h"
 #include <algorithm>
@@ -46,6 +47,8 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
 #pragma region Manual Object Creation
+	m_scene->AddObject(new Plane());
+
 	//static const float massStep = 4.f;
 
 	//// Default weight (RED)

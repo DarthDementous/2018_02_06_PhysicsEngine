@@ -1,9 +1,9 @@
 #include "Physics\Scene.h"
 #include "Physics\Rigidbody.h"
-#include "Physics/Sphere.h"
+#include "Physics\Sphere.h"
+#include "Physics\Plane.h"
 #include <glm/ext.hpp>
 #include <assert.h>
-
 using namespace Physebs;
 
 Scene::Scene(const glm::vec3 & a_gravityForce, const glm::vec3& a_globalForce) : m_gravity(a_gravityForce), m_globalForce(a_globalForce)
@@ -114,6 +114,34 @@ bool Scene::IsColliding_Sphere_Sphere(Sphere * a_actor, Sphere * a_other)
 }
 
 /**
+*	@brief Determine whether there is an overlap between a plane and a sphere.
+*	@param a_actor is the address to the plane being collided with.
+*	@param a_other is the address to the sphere that has collided with a_actor.
+*	@param a_overlapRef is the overlap value passed in by reference that will be assigned the overlap value of the collision.
+*	@return TRUE overlap between objects || FALSE no overlap between spheres
+*/
+bool Scene::IsColliding_Plane_Sphere(Plane* a_actor, Sphere* a_other, float& a_overlapRef) {
+	/// Assume everything is at the origin so positions can also be vectors
+	// 1. Dot-product plane normal with sphere position (aka vector from origin to sphere position) = distance between sphere position and plane
+	float overlap = glm::dot(a_actor->GetNormal(), a_other->GetPos());
+	// 2. Get length of vector between plane position and origin (aka plane position)
+	float distPlane = glm::length(a_actor->GetPos());
+	// 3. Get final overlap by minusing plane distance from sphere distance to to put sphere in same space as the plane
+	overlap -= distPlane;
+
+	// Assign overlap to overlap reference float
+	a_overlapRef = overlap;
+
+	// 4. Check if overlap is less than the radius of the sphere
+	if (overlap < a_other->GetRadius()) {
+		return true;
+	}
+
+	// No overlapping detected
+	return false;
+}
+
+/**
 *	@brief Apply defined gravity force to every object in the scene.
 *	@return void.
 */
@@ -135,22 +163,58 @@ void Scene::DetectCollisions()
 		
 		// Second for loop is shifted one to the right in order to access the 'others'
 		for (auto other_iter = actor_iter + 1; other_iter != m_objects.end(); ++other_iter) {
-			/// Sphere vs sphere
-			Sphere* actor = static_cast<Sphere*>(*actor_iter);
-			Sphere* other = static_cast<Sphere*>(*other_iter);
+			Rigidbody* actor = *actor_iter;
+			Rigidbody* other = *other_iter;
+			
+			// How much the objects overlap in total
+			float overlap;
 
-			float overlap = 0.f;		// How much shapes overlap each other (for collision resolution)
-
-			if (actor != nullptr && other != nullptr) {
+			// Determine what kind of object collision we're checking for and detect appropriately
+			switch (actor->GetShape()) {
 				
-				if (IsColliding_Sphere_Sphere(actor, other)) {
-					// Find overlap by taking radii of spheres into account between distance of origins
-					overlap = (actor->GetRadius() + other->GetRadius()) - glm::distance(actor->GetPos(), other->GetPos());		// (Radii - distance) NOT (distance - radii) or there will be negative cases
+			case SPHERE :
+				// Static cast to access sphere functions
+				Sphere * actorSphere = static_cast<Sphere*>(actor);
 
-					m_collisions.push_back(Collision(actor, other, overlap));
+					switch (other->GetShape()) {
+
+					case SPHERE :
+						Sphere* otherSphere = static_cast<Sphere*>(other);
+
+						// Find overlap by taking radii of spheres into account between distance of origins (Radii - distance) NOT (distance - radii) or there will be negative cases
+						overlap = (actorSphere->GetRadius() + otherSphere->GetRadius()) - glm::distance(actorSphere->GetPos(), otherSphere->GetPos());
+
+						m_collisions.push_back(Collision(actorSphere, otherSphere, overlap));
+						break;
+
+					case PLANE:
+						Plane * otherPlane = static_cast<Plane*>(other);
+
+
+					}
+			}
+			float overlap = 0.f;		// How much shapes overlap each other (for collision resolution)
+			
+			if (actorSphere != nullptr) {
+				/// Sphere vs sphere
+				if (otherSphere != nullptr) {
+
+				}
+			}
+
+			if (actorSphere != nullptr && otherSphere != nullptr) {
+				
+				if (IsColliding_Sphere_Sphere(actorSphere, otherSphere)) {
+					// Find overlap by taking radii of spheres into account between distance of origins (Radii - distance) NOT (distance - radii) or there will be negative cases
+					overlap = (actorSphere->GetRadius() + otherSphere->GetRadius()) - glm::distance(actorSphere->GetPos(), otherSphere->GetPos());
+
+					m_collisions.push_back(Collision(actorSphere, otherSphere, overlap));
 				}
 
 			}
+
+			/// Plane vs sphere
+			if (actorPlane != nullptr && otherSphere != nullptr)
 		}
 
 	}
@@ -185,26 +249,37 @@ void Scene::ResolveCollisions() {
 		- Use resources formula to calculate j
 		- Add ApplyImpulse function to object
 		*/
-		glm::vec3 collisionNormal		= coll.actor->GetPos() + coll.other->GetPos();				// What direction to apply impulse knockback force to the objects in
+		/// VECTORS MUST ALWAYS POINT FROM OBJECT A TO OBJECT B (B - A)
+		// What direction to apply impulse knockback force to the objects in [B - A]. A WILL GET NEGATIVE, B WILL GET POSITIVE FORCE TO PUSH BACK
+		glm::vec3 collisionNormal = coll.other->GetPos() - coll.actor->GetPos();				
 
 		// Objects are not completely static (collision vec length means not dividing by 0)
 		if (glm::length(collisionNormal) != 0) {
 			collisionNormal = glm::normalize(collisionNormal);
 
 			/// Use half of the overlap value (half push-back for each object) to set their position back along the appropriate collision normal so objects are no longer touching
-			coll.actor->SetPos(coll.actor->GetPos() + ((coll.overlap / 2) * collisionNormal));
-			coll.other->SetPos(coll.other->GetPos() + ((coll.overlap / 2) * -collisionNormal));
+			// Actor isn't static, allow position to be modified to account for overlap
+			if (coll.actor->GetIsDynamic()) {
+				
+				coll.actor->SetPos(coll.actor->GetPos() + ((coll.overlap / 2) * -collisionNormal));
+			}
+			// Other object isn't static, allow position to be modified to account for overlap
+			if (coll.other->GetIsDynamic()) {
+
+				coll.other->SetPos(coll.other->GetPos() + ((coll.overlap / 2) * collisionNormal));
+			}
 
 			/// Use collision resolution equation to find scale of impulse knockback force
-			glm::vec3 relativeVel = coll.actor->GetVel() - coll.other->GetVel();						// Modify the ratio of impulse force
+			// Modify the ratio of impulse force (MUST USE SAME METHOD AS CALCULATING COLLISION NORMAL: [B - A])
+			glm::vec3 relativeVel = coll.other->GetVel() - coll.actor->GetVel();
 
 			float impulseScale =
 				glm::dot(-(1 + restitution) * relativeVel, collisionNormal) /
 				glm::dot(collisionNormal, collisionNormal * (1 / coll.actor->GetMass() + 1 / coll.other->GetMass()));
 
 			// Apply impulse resolution force along appropriate direction for each object
-			coll.actor->ApplyImpulseForce(impulseScale * collisionNormal);
-			coll.other->ApplyImpulseForce(impulseScale * -collisionNormal);
+			coll.actor->ApplyImpulseForce(impulseScale * -collisionNormal);
+			coll.other->ApplyImpulseForce(impulseScale * collisionNormal);
 		}
 
 		

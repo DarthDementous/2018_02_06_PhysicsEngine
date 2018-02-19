@@ -7,6 +7,7 @@
 namespace Physebs {
 	class Rigidbody;
 	class Sphere;
+	class Plane;
 
 	/**
 	*	@brief Structure for holding collision data.
@@ -39,6 +40,7 @@ namespace Physebs {
 		void ApplyGlobalForce();
 
 		static bool IsColliding_Sphere_Sphere(Sphere* a_actor, Sphere* a_other);
+		static bool IsColliding_Plane_Sphere(Plane* a_actor, Sphere* a_other, float& a_overlapRef);
 
 		const std::vector<Rigidbody*>& GetObjects()	const				{ return m_objects; }
 
