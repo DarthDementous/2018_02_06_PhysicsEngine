@@ -64,5 +64,7 @@ namespace Physebs {
 		void ApplyGravity();				// Only want scene to be able to apply gravity to keep consistency
 		void DetectCollisions();			// Object collisions are only handled within the scene
 		void ResolveCollisions();			// Apply appropriate forces to objects that have collided
+		void ApplyKnockback_Dynamic(Rigidbody* a_actor, Rigidbody* a_other, const glm::vec3& a_collisionNormal);
+		void ApplyKnockback_Static(Rigidbody* a_actor, Rigidbody* a_other, const glm::vec3& a_collisionNormal);
 	};
 }

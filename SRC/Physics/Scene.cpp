@@ -169,54 +169,73 @@ void Scene::DetectCollisions()
 			// How much the objects overlap in total
 			float overlap;
 
+#pragma region Object Type Detection and Collision Checks
 			// Determine what kind of object collision we're checking for and detect appropriately
-			switch (actor->GetShape()) {
-				
-			case SPHERE :
+			switch (actor->GetShape())
+			{
+			case SPHERE:
+			{
 				// Static cast to access sphere functions
 				Sphere * actorSphere = static_cast<Sphere*>(actor);
 
-					switch (other->GetShape()) {
+				switch (other->GetShape())
+				{
+				case SPHERE:
+				{
+					Sphere* otherSphere = static_cast<Sphere*>(other);
 
-					case SPHERE :
-						Sphere* otherSphere = static_cast<Sphere*>(other);
-
-						// Find overlap by taking radii of spheres into account between distance of origins (Radii - distance) NOT (distance - radii) or there will be negative cases
-						overlap = (actorSphere->GetRadius() + otherSphere->GetRadius()) - glm::distance(actorSphere->GetPos(), otherSphere->GetPos());
-
-						m_collisions.push_back(Collision(actorSphere, otherSphere, overlap));
-						break;
-
-					case PLANE:
-						Plane * otherPlane = static_cast<Plane*>(other);
-
-
-					}
-			}
-			float overlap = 0.f;		// How much shapes overlap each other (for collision resolution)
-			
-			if (actorSphere != nullptr) {
-				/// Sphere vs sphere
-				if (otherSphere != nullptr) {
-
-				}
-			}
-
-			if (actorSphere != nullptr && otherSphere != nullptr) {
-				
-				if (IsColliding_Sphere_Sphere(actorSphere, otherSphere)) {
 					// Find overlap by taking radii of spheres into account between distance of origins (Radii - distance) NOT (distance - radii) or there will be negative cases
 					overlap = (actorSphere->GetRadius() + otherSphere->GetRadius()) - glm::distance(actorSphere->GetPos(), otherSphere->GetPos());
 
 					m_collisions.push_back(Collision(actorSphere, otherSphere, overlap));
+					break;
 				}
+				case AABB:
+				{
+					// TODO: Write code for sphere vs AABB collision check
+					break;
+				}
+				case PLANE:
+				{
+					Plane * otherPlane = static_cast<Plane*>(other);
 
+					if (IsColliding_Plane_Sphere(otherPlane, actorSphere, overlap)) {
+						m_collisions.push_back(Collision(actorSphere, otherPlane, overlap));
+					}
+
+					break;
+				}
+				}
+				break;
 			}
+			case PLANE:
+			{
+				Plane* actorPlane = static_cast<Plane*>(actor);
 
-			/// Plane vs sphere
-			if (actorPlane != nullptr && otherSphere != nullptr)
+				switch (other->GetShape())
+				{
+				case SPHERE:
+				{
+					Sphere* otherSphere = static_cast<Sphere*>(other);
+
+					if (IsColliding_Plane_Sphere(actorPlane, otherSphere, overlap)) {
+						m_collisions.push_back(Collision(actorPlane, otherSphere, overlap));
+					}
+
+					break;
+				}
+				case AABB:
+				{
+					// TODO: Write code for plane vs AABB collision check
+					break;
+				}
+				}
+				break;
+			}
+			}
 		}
-
+#pragma endregion
+	
 	}
 }
 
@@ -226,60 +245,41 @@ void Scene::DetectCollisions()
 */
 void Scene::ResolveCollisions() {
 	// TODO: Replace simple but naive way of resolving collisions
-	static float restitution = 0.5f;	// TODO: Place restitution variable into Rigidbody
 
 	for (auto coll : m_collisions) {
-		// TODO: Need to separate objects before knocking them back so they are no longer colliding
-
-		//// Determine knockback force from mass and velocity from perspective of each object. WARNING: Only works in one direction
-		//glm::vec3 knockbackForceA = coll.other->GetMass() * coll.other->GetVel();
-		//glm::vec3 knockbackForceB = coll.actor->GetMass() * coll.actor->GetVel();
-
-		//coll.actor->ApplyForce(knockbackForceA);
-		//coll.other->ApplyForce(knockbackForceB);
-
-		/*
-		1. Create a vector from A to B
-		2. Create a normalised collision vector
-		3. Calculate the relative velocity
-		4. Use dot product to get projected length of relative velocity along collision vector
-
-		Impulse Force:
-		- Add restitution value to objects
-		- Use resources formula to calculate j
-		- Add ApplyImpulse function to object
-		*/
 		/// VECTORS MUST ALWAYS POINT FROM OBJECT A TO OBJECT B (B - A)
 		// What direction to apply impulse knockback force to the objects in [B - A]. A WILL GET NEGATIVE, B WILL GET POSITIVE FORCE TO PUSH BACK
-		glm::vec3 collisionNormal = coll.other->GetPos() - coll.actor->GetPos();				
+		glm::vec3 collisionNormal = coll.other->GetPos() - coll.actor->GetPos();
 
 		// Objects are not completely static (collision vec length means not dividing by 0)
 		if (glm::length(collisionNormal) != 0) {
 			collisionNormal = glm::normalize(collisionNormal);
 
-			/// Use half of the overlap value (half push-back for each object) to set their position back along the appropriate collision normal so objects are no longer touching
-			// Actor isn't static, allow position to be modified to account for overlap
-			if (coll.actor->GetIsDynamic()) {
-				
-				coll.actor->SetPos(coll.actor->GetPos() + ((coll.overlap / 2) * -collisionNormal));
+			// Use half of the overlap value (half push-back for each object) to set their position back along the appropriate collision normal so objects are no longer touching
+			glm::vec3 overlapAccountVec = (coll.overlap / 2) * collisionNormal;
+
+			/// DYNAMIC ACTOR, STATIC OTHER
+			if (coll.actor->GetIsDynamic() && !(coll.other->GetIsDynamic())) {
+				// Account for overlap for actor
+				coll.actor->SetPos(coll.actor->GetPos() + overlapAccountVec);
+
+				ApplyKnockback_Static(coll.actor, coll.other, collisionNormal);
 			}
-			// Other object isn't static, allow position to be modified to account for overlap
-			if (coll.other->GetIsDynamic()) {
+			/// STATIC ACTOR, DYNAMIC OTHER
+			if (!(coll.actor->GetIsDynamic()) && coll.other->GetIsDynamic()) {
+				// Account for overlap for other
+				coll.other->SetPos(coll.other->GetPos() + overlapAccountVec);
 
-				coll.other->SetPos(coll.other->GetPos() + ((coll.overlap / 2) * collisionNormal));
+				ApplyKnockback_Static(coll.actor, coll.other, collisionNormal);
 			}
+			/// DYNAMIC ACTOR, DYNAMIC OTHER
+			if (coll.actor->GetIsDynamic() && coll.other->GetIsDynamic()) {
+				// Account for overlap for actor and other (actor is negative because collisionNormal created from B - A)
+				coll.actor->SetPos(coll.actor->GetPos() + -overlapAccountVec);
+				coll.other->SetPos(coll.other->GetPos() + overlapAccountVec);
 
-			/// Use collision resolution equation to find scale of impulse knockback force
-			// Modify the ratio of impulse force (MUST USE SAME METHOD AS CALCULATING COLLISION NORMAL: [B - A])
-			glm::vec3 relativeVel = coll.other->GetVel() - coll.actor->GetVel();
-
-			float impulseScale =
-				glm::dot(-(1 + restitution) * relativeVel, collisionNormal) /
-				glm::dot(collisionNormal, collisionNormal * (1 / coll.actor->GetMass() + 1 / coll.other->GetMass()));
-
-			// Apply impulse resolution force along appropriate direction for each object
-			coll.actor->ApplyImpulseForce(impulseScale * -collisionNormal);
-			coll.other->ApplyImpulseForce(impulseScale * collisionNormal);
+				ApplyKnockback_Dynamic(coll.actor, coll.other, collisionNormal);
+			}
 		}
 
 		
@@ -287,4 +287,65 @@ void Scene::ResolveCollisions() {
 
 	// Collisions have been resolved for this frame, clear all recorded collisions
 	m_collisions.clear();
+}
+
+/**
+*	@brief Calculate and apply impulse knockback taking the relative velocity of the two objects into account.
+*	NOTE: Should only be used if both actor and other are dynamic rigidbodies.
+*	@param a_actor is the pointer to the actor object.
+*	@param a_other is the pointer to the other object.
+*	@param a_collisionNormal is the vector used to determine the direction to push each object back in. (ACTOR RECEIVES NEGATIVE OF THIS BY DEFAULT).
+*	@return void.
+*/
+void Scene::ApplyKnockback_Dynamic(Rigidbody * a_actor, Rigidbody * a_other, const glm::vec3& a_collisionNormal)
+{
+	const float restitution = 0.5f;	// TODO: Place restitution variable into Rigidbody
+
+	/// Use collision resolution equation to find scale of impulse knockback force
+	// Modify the ratio of impulse force (MUST USE SAME METHOD AS CALCULATING COLLISION NORMAL: [B - A])
+	glm::vec3 relativeVel = a_other->GetVel() - a_actor->GetVel();
+
+	float impulseScale =
+		glm::dot(-(1 + restitution) * relativeVel, a_collisionNormal) /
+		glm::dot(a_collisionNormal, a_collisionNormal * (1 / a_actor->GetMass() + 1 / a_other->GetMass()));
+
+	// Apply impulse resolution force along appropriate direction for each object
+	a_actor->ApplyImpulseForce(impulseScale * -a_collisionNormal);
+	a_other->ApplyImpulseForce(impulseScale * a_collisionNormal);
+}
+
+/**
+*	@brief Calculate and apply impulse knockback taking only the velocity of the dynamic object
+*	NOTE: Should only be used if one of the rigidbodies are static.
+*	@param a_actor is the pointer to the actor object.
+*	@param a_other is the pointer to the other object.
+*	@param a_collisionNormal is the direction to push the dynamic object in.
+*	@return void.
+*/
+void Physebs::Scene::ApplyKnockback_Static(Rigidbody * a_actor, Rigidbody * a_other, const glm::vec3& a_collisionNormal)
+{
+	const float restitution = 0.5f;
+
+	// For readability create separate pointers that distinguish which object is static and which object is dynamic
+	Rigidbody* staticObj;
+	Rigidbody* dynamicObj;
+
+	// Assume that there's only one static object
+	if (a_actor->GetIsDynamic()) {
+		dynamicObj	= a_actor;
+		staticObj	= a_other;
+	}
+	else {
+		dynamicObj	= a_other;
+		staticObj	= a_actor;
+	}
+
+	// Use collision resolution equation to find impulse knockback force.
+	// NOTE: Because one object is static, assume it has infinite mass and that the relative velocity is the velocity of the dynamic object
+	float impulseScale =
+		glm::dot(-(1 + restitution) * dynamicObj->GetVel(), a_collisionNormal) /
+		1 / dynamicObj->GetMass();
+
+	// Apply impulse resolution force along collision normal for dynamic object
+	dynamicObj->ApplyImpulseForce(impulseScale * a_collisionNormal);
 }
