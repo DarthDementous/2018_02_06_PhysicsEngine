@@ -8,7 +8,10 @@
 #define DEFAULT_GRAVITY -9.8f
 
 #define DEFAULT_SPHERE glm::ivec2(16, 16)
+#define DEFAULT_AABB glm::vec3(1, 1, 1)
 #define DEFAULT_PLANE_NORMAL glm::vec3(0, 1, 0)
+
+#define DEFAULT_COLOR glm::vec4(0, 0, 0, 1)
 
 namespace Physebs {
 	/**

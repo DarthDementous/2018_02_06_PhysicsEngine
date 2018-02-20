@@ -39,6 +39,9 @@
     <ClCompile Include="SRC\Physics\Plane.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SRC\Physics\AABB.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="_2018_02_06_PhysicsEngineApp.h">
@@ -60,6 +63,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="INC\Physics\Plane.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="INC\Physics\AABB.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

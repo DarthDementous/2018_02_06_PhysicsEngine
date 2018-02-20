@@ -15,8 +15,9 @@ namespace Physebs {
 
 		virtual void Draw();
 
-		const glm::vec3&	GetNormal() const { return m_normal; }
-		void				SetNormal(const glm::vec3& a_normal) { m_normal = a_normal; }
+		float*				GetNormalRef()							{ return &m_normal.x; }
+		const glm::vec3&	GetNormal() const						{ return m_normal; }
+		void				SetNormal(const glm::vec3& a_normal)	{ m_normal = a_normal; }
 	protected:
 		glm::vec3 m_normal;
 	private:

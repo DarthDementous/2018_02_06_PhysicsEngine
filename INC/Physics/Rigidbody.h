@@ -9,14 +9,14 @@
 */
 namespace Physebs {
 	
-	enum eShape {SPHERE, PLANE, AABB};
+	enum eShape {SPHERE, PLANE, AA_BOX};			// enums can't have name of an existing data-type or compiler will get confused (e.g. AABB)
 
 	class Rigidbody {
 	public:
 		// Constructor and destructor can be public because a variable of type Rigidbody can't exist if its pure virtual
 		Rigidbody(
 			const glm::vec3& a_pos = glm::vec3(), float a_mass = DEFAULT_MASS, float a_frict = DEFAULT_FRICTION, 
-			bool a_dynamic = true, const glm::vec4& a_color = glm::vec4()
+			bool a_dynamic = true, const glm::vec4& a_color = DEFAULT_COLOR			// Alpha of 1 by default
 		);
 
 		virtual ~Rigidbody() = 0;	// Inherited classes must define a destructor

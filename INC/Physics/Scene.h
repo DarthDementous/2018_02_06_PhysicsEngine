@@ -13,12 +13,15 @@ namespace Physebs {
 	*	@brief Structure for holding collision data.
 	*/
 	struct Collision {
-		Collision(Rigidbody* a_actor, Rigidbody* a_other, float a_overlap) : actor(a_actor), other(a_other), overlap(a_overlap) {}
+		Collision(Rigidbody* a_actor, Rigidbody* a_other, const glm::vec3& a_collisionNormal = glm::vec3(), float a_overlap = 0.f) 
+			: actor(a_actor), other(a_other), collisionNormal(a_collisionNormal), overlap(a_overlap) {}
 
 		Rigidbody* actor;
 		Rigidbody* other;
 
-		float overlap;		// The overlap between the colliding object's shapes
+		float overlap;				// The overlap between the colliding object's shapes
+
+		glm::vec3 collisionNormal;	// The direction to base collision knockback on
 	};
 
 	/**
@@ -39,8 +42,8 @@ namespace Physebs {
 
 		void ApplyGlobalForce();
 
-		static bool IsColliding_Sphere_Sphere(Sphere* a_actor, Sphere* a_other);
-		static bool IsColliding_Plane_Sphere(Plane* a_actor, Sphere* a_other, float& a_overlapRef);
+		static bool IsColliding_Sphere_Sphere(Collision& a_collision);
+		static bool IsColliding_Plane_Sphere(Collision& a_collision);
 
 		const std::vector<Rigidbody*>& GetObjects()	const				{ return m_objects; }
 
@@ -64,7 +67,7 @@ namespace Physebs {
 		void ApplyGravity();				// Only want scene to be able to apply gravity to keep consistency
 		void DetectCollisions();			// Object collisions are only handled within the scene
 		void ResolveCollisions();			// Apply appropriate forces to objects that have collided
-		void ApplyKnockback_Dynamic(Rigidbody* a_actor, Rigidbody* a_other, const glm::vec3& a_collisionNormal);
-		void ApplyKnockback_Static(Rigidbody* a_actor, Rigidbody* a_other, const glm::vec3& a_collisionNormal);
+		void ApplyKnockback_Dynamic(Collision& a_collision);
+		void ApplyKnockback_Static(Collision& a_collision);
 	};
 }

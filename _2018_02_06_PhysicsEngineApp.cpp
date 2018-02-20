@@ -6,6 +6,7 @@
 #include "Physics\Sphere.h"
 #include "Physics\Plane.h"
 #include "Physics\Scene.h"
+#include "Physics\AABB.h"
 #include "Camera\Camera.h"
 #include <algorithm>
 #include <iostream>
@@ -47,7 +48,8 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
 #pragma region Manual Object Creation
-	m_scene->AddObject(new Plane());
+	//m_scene->AddObject(new Plane(DEFAULT_PLANE_NORMAL, glm::vec3(0, 1, 0)));
+	//m_scene->AddObject(new AABB());
 
 	//static const float massStep = 4.f;
 
@@ -108,11 +110,19 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	
 #pragma region Object Creator
 	if (ImGui::CollapsingHeader("Object Creator")) {
-		// Make variables static so they're only defined once so their values at their addresses can be changed after by user input
+		/// Make variables static so they're only defined once so their values at their addresses can be changed after by user input
+		// Display shape options and store index data
+		static int shape = SPHERE;
+		ImGui::RadioButton("Sphere", &shape, 0);
+		ImGui::RadioButton("Plane", &shape, 1);
+		ImGui::RadioButton("AABB", &shape, 2);
+
+		// Has the user created an object this frame
+		static bool b_createdObj = false;
+
+		// Universal Rigidbody options
 		static float	pos[3] = { 0.f, 0.f, 0.f };
 		static float	force[3] = { 0.f, 0.f, 0.f };
-		static float	dim[2] = { DEFAULT_SPHERE.x, DEFAULT_SPHERE.y };
-		static float	radius = DEFAULT_MASS;
 		static float	mass = DEFAULT_MASS;
 		static float	friction = DEFAULT_FRICTION;
 		static float	color[4] = { 0.f, 0.f, 0.f, 1.f };
@@ -121,35 +131,79 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 		ImGui::InputFloat3("Position", pos, 2);
 		ImGui::InputFloat3("Starting Force", force, 2);
-		ImGui::InputFloat2("Dimensions", dim, 2);
-		ImGui::InputFloat("Radius", &radius, 1.f, 0.f, 2);
 		ImGui::InputFloat("Mass", &mass, 1.f, 0.f, 2);
 		ImGui::InputFloat("Friction", &friction, 1.f, 0.f, 2);
 		ImGui::ColorEdit4("Color", color);
 		ImGui::Checkbox("Is Dynamic", &b_dynamic);
 		ImGui::Checkbox("Velocity is impulse", &b_impulse);
 
-		// Object spawn button has been clicked
-		if (ImGui::SmallButton("Spawn Sphere")) {
-			// Grab data from static input variables and create object from it
-			glm::vec3 currentPos = glm::vec3(pos[0], pos[1], pos[2]);
-			glm::vec3 currentForce = glm::vec3(force[0], force[1], force[2]);
-			glm::vec2 currentDim = glm::vec2(dim[0], dim[1]);
-			glm::vec4 currentColor = glm::vec4(color[0], color[1], color[2], color[3]);
+		// Convert input into vectors where necessary
+		glm::vec3 currentPos = glm::vec3(pos[0], pos[1], pos[2]);
+		glm::vec3 currentForce = glm::vec3(force[0], force[1], force[2]);
+		glm::vec4 currentColor = glm::vec4(color[0], color[1], color[2], color[3]);
 
-			Sphere* newObj = new Sphere(radius, currentDim, currentPos, mass, friction, b_dynamic, currentColor);
+		/// Create a sphere
+		if (shape == SPHERE) {
+			// Sphere options
+			static float dim[2] = { DEFAULT_SPHERE.x, DEFAULT_SPHERE.y };
+			static float radius = DEFAULT_MASS;
 
-			// Object velocity is not impulse, apply over time
-			if (!b_impulse) {
-				newObj->ApplyForce(currentForce);
+			ImGui::InputFloat("Radius", &radius, 1.f, 0.f, 2);
+			ImGui::InputFloat2("Dimensions", dim, 2);
+
+			if (ImGui::SmallButton("Spawn Sphere")) {
+				glm::vec2 currentDim = glm::vec2(dim[0], dim[1]);
+
+				m_scene->AddObject(new Sphere(radius, currentDim, currentPos, mass, friction, b_dynamic, currentColor));
+				b_createdObj = true;
 			}
-			// Object velocity is impulse, apply instantly
+		}
+
+		/// Create a plane
+		if (shape == PLANE) {
+			// Plane options
+			static float normal[3] = { DEFAULT_PLANE_NORMAL.x, DEFAULT_PLANE_NORMAL.y, DEFAULT_PLANE_NORMAL.z };
+
+			ImGui::InputFloat3("Normal", normal, 2);
+
+			if (ImGui::SmallButton("Spawn Plane")) {
+				glm::vec3 currentNormal = glm::vec3(normal[0], normal[1], normal[2]);
+
+				m_scene->AddObject(new Plane(currentNormal, currentPos, mass, friction, b_dynamic, currentColor));
+				b_createdObj = true;
+			}
+		}
+
+		/// Create an AABB
+		if (shape == AA_BOX) {
+			// AABB options
+			static float extents[3] = { DEFAULT_AABB.x, DEFAULT_AABB.y, DEFAULT_AABB.z };
+
+			ImGui::InputFloat3("Extents", extents, 2);
+
+			if (ImGui::SmallButton("Spawn AABB")) {
+				glm::vec3 currentExtents = glm::vec3(extents[0], extents[1], extents[2]);
+
+				m_scene->AddObject(new AABB(currentExtents, currentPos, mass, friction, b_dynamic, currentColor));
+				b_createdObj = true;
+			}
+		}
+
+		// Apply appropriate starting force to last object (if one was added this frame)
+		if (b_createdObj) {
+			Rigidbody* lastAddedObj = m_scene->GetObjects().back();
+
+			// Apply force instantly
+			if (b_impulse) {
+				lastAddedObj->ApplyImpulseForce(currentForce);
+			}
+			// Apply force over time
 			else {
-				newObj->ApplyImpulseForce(currentForce);
+				lastAddedObj->ApplyForce(currentForce);
 			}
 
-			// Add created object to scene
-			m_scene->AddObject(newObj);
+			// Make sure force doesn't keep getting applied
+			b_createdObj = false;
 		}
 
 	}
@@ -166,16 +220,36 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			// Clamp index with vector constraints to ensure there is no overflow when an object is deleted
 			selectedObjIndex = Physebs::Clamp<size_t>(selectedObjIndex, m_scene->GetObjects().size() - 1, 0);
 
-			Sphere* currentObj = static_cast<Sphere*>(m_scene->GetObjects()[selectedObjIndex]);
+			Rigidbody* currentObj = m_scene->GetObjects()[selectedObjIndex];
 
-			// Plug references to current object variables into input fields so they update in real-time
+			// Plug references to current universal rigidbody variables into input fields so they update in real-time
 			ImGui::InputFloat3("Current Position", currentObj->GetPosRef(), 2);
-			ImGui::InputInt2("Current Dimensions", currentObj->GetDimensionsRef());
-			ImGui::InputFloat("Current Radius", currentObj->GetRadiusRef(), 1.f, 0.f, 2);
 			ImGui::InputFloat("Current Mass", currentObj->GetMassRef(), 1.f, 0.f, 2);
 			ImGui::InputFloat("Current Friction", currentObj->GetFrictRef(), 1.f, 0.f, 2);
 			ImGui::ColorEdit4("Current Color", currentObj->GetColorRef());
 			ImGui::Checkbox("Current Is Dynamic", currentObj->GetIsDynamicRef());
+
+			/// Object is sphere, display relevant information
+			if (currentObj->GetShape() == SPHERE) {
+				Sphere* currentSphere = static_cast<Sphere*>(currentObj);
+
+				ImGui::InputInt2("Current Dimensions", currentSphere->GetDimensionsRef());
+				ImGui::InputFloat("Current Radius", currentSphere->GetRadiusRef(), 1.f, 0.f, 2);
+			}
+
+			/// Object is plane, display relevant information
+			if (currentObj->GetShape() == PLANE) {
+				Plane*	currentPlane = static_cast<Plane*>(currentObj);
+
+				ImGui::InputFloat3("Current Normal", currentPlane->GetNormalRef(), 2);
+			}
+
+			/// Object is AABB, display relevant information
+			if (currentObj->GetShape() == AA_BOX) {
+				AABB*	currentAABB = static_cast<AABB*>(currentObj);
+
+				ImGui::InputFloat3("Current Extents", currentAABB->GetExtentsRef(), 2);
+			}
 
 			// User has selected previous object
 			if (ImGui::Button("Prev")) {
