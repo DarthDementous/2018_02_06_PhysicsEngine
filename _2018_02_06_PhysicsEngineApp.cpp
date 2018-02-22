@@ -48,8 +48,8 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
 #pragma region Manual Object Creation
-	//m_scene->AddObject(new Plane(DEFAULT_PLANE_NORMAL, glm::vec3(0, 1, 0)));
-	//m_scene->AddObject(new AABB());
+	m_scene->AddObject(new Plane(DEFAULT_PLANE_NORMAL, -5));
+	m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 20, 0), 6));
 
 	//static const float massStep = 4.f;
 
@@ -92,7 +92,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 #pragma region IMGUI
 	// Ensure size and position is only set once and ignores whatever is in imgui.cfg
-	ImGui::SetNextWindowSize(ImVec2(550, 550), ImGuiSetCond_Once);		
+	ImGui::SetNextWindowSize(ImVec2(580, 550), ImGuiSetCond_Once);		
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_Once);
 	ImGui::Begin("Physics Engine Interface");
 
@@ -162,14 +162,16 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 		/// Create a plane
 		if (shape == PLANE) {
 			// Plane options
-			static float normal[3] = { DEFAULT_PLANE_NORMAL.x, DEFAULT_PLANE_NORMAL.y, DEFAULT_PLANE_NORMAL.z };
+			static float normal[3]	= { DEFAULT_PLANE_NORMAL.x, DEFAULT_PLANE_NORMAL.y, DEFAULT_PLANE_NORMAL.z };
+			static float dist		= 0;
 
 			ImGui::InputFloat3("Normal", normal, 2);
+			ImGui::InputFloat("Distance From Origin", &dist);
 
 			if (ImGui::SmallButton("Spawn Plane")) {
 				glm::vec3 currentNormal = glm::vec3(normal[0], normal[1], normal[2]);
 
-				m_scene->AddObject(new Plane(currentNormal, currentPos, mass, friction, b_dynamic, currentColor));
+				m_scene->AddObject(new Plane(currentNormal, dist, currentPos, mass, friction, b_dynamic, currentColor));
 				b_createdObj = true;
 			}
 		}
@@ -242,6 +244,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 				Plane*	currentPlane = static_cast<Plane*>(currentObj);
 
 				ImGui::InputFloat3("Current Normal", currentPlane->GetNormalRef(), 2);
+				ImGui::InputFloat("Current Distance From Origin", currentPlane->GetDistRef(), 1);
 			}
 
 			/// Object is AABB, display relevant information

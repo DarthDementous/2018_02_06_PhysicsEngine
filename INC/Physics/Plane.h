@@ -6,7 +6,7 @@
 namespace Physebs {
 	class Plane : public Rigidbody {
 	public:
-		Plane(const glm::vec3& a_normal = DEFAULT_PLANE_NORMAL,
+		Plane(const glm::vec3& a_normal = DEFAULT_PLANE_NORMAL, float a_originDist = 0,
 			const glm::vec3& a_pos = glm::vec3(), float a_mass = DEFAULT_MASS, float a_frict = DEFAULT_FRICTION,
 			bool a_dynamic = false, const glm::vec4& a_color = glm::vec4()		// Make planes static by default
 		);
@@ -15,11 +15,17 @@ namespace Physebs {
 
 		virtual void Draw();
 
+		float*				GetDistRef()							{ return &m_originDist; }
+		float				GetDist() const							{ return m_originDist; }
+		void				SetDist(float a_dist)					{ m_originDist = a_dist; }
+
 		float*				GetNormalRef()							{ return &m_normal.x; }
 		const glm::vec3&	GetNormal() const						{ return m_normal; }
 		void				SetNormal(const glm::vec3& a_normal)	{ m_normal = a_normal; }
 	protected:
-		glm::vec3 m_normal;
+		glm::vec3 m_normal;		// The direction the plane is facing in
+
+		float m_originDist;		// How far away from the origin the plane is (+ if in positive range, - if in negative range)
 	private:
 	};
 }

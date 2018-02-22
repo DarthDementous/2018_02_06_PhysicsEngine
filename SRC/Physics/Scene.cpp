@@ -139,15 +139,13 @@ bool Scene::IsColliding_Plane_Sphere(Collision& a_collision) {
 
 	/// Assume everything is at the origin so positions can also be vectors
 	// 1. Dot-product plane normal with sphere position (aka vector from origin to sphere position) = distance between sphere position and plane
-	float overlap = glm::dot(actorPlane->GetNormal(), otherSphere->GetPos());
-	// 2. Get length of vector between plane position and origin (aka plane position)
-	float distPlane = glm::length(actorPlane->GetPos());
-	// 3. Get final overlap by minusing plane distance from sphere distance to to put sphere in same space as the plane
-	float finalOverlap = overlap - distPlane;
+	float sphereDist = glm::dot(actorPlane->GetNormal(), otherSphere->GetPos());
+	// 2. Get final distance by minusing plane distance from sphere distance to account for plane not being at the origin
+	float finalDist = sphereDist - actorPlane->GetDist();
 
 	// 4. Check if overlap is less than the radius of the sphere
-	if (finalOverlap < otherSphere->GetRadius()) {
-		a_collision.overlap				= otherSphere->GetRadius() - finalOverlap;		// Take radius of sphere into account
+	if (finalDist < otherSphere->GetRadius()) {
+		a_collision.overlap				= otherSphere->GetRadius() - finalDist;		// How much objects have intersected taking sphere radius into account
 		a_collision.collisionNormal		= actorPlane->GetNormal();
 
 		return true;
