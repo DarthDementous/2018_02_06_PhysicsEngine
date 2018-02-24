@@ -2,8 +2,10 @@
 #include "Physics\Rigidbody.h"
 #include "Physics\Sphere.h"
 #include "Physics\Plane.h"
+#include "Physics\AABB.h"
 #include <glm/ext.hpp>
 #include <assert.h>
+#include <Gizmos.h>
 using namespace Physebs;
 
 Scene::Scene(const glm::vec3 & a_gravityForce, const glm::vec3& a_globalForce) : m_gravity(a_gravityForce), m_globalForce(a_globalForce)
@@ -36,6 +38,8 @@ void Scene::FixedUpdate(float a_dt)
 
 		m_accumulatedTime -= m_fixedTimeStep;	// Account for time overflow
 	}
+
+
 }
 
 void Scene::Update() {
@@ -102,11 +106,11 @@ void Scene::ApplyGlobalForce()
 */
 bool Scene::IsColliding_Sphere_Sphere(Collision& a_collision)
 {
+	assert(a_collision.actor->GetShape() == SPHERE && "IsColliding_Sphere_Sphere collision actor is not a sphere.");
 	Sphere* actorSphere = static_cast<Sphere*>(a_collision.actor);
-	assert(actorSphere && "IsColliding_Sphere_Sphere collision actor is not a sphere.");
 
+	assert(a_collision.other->GetShape() == SPHERE && "IsColliding_Sphere_Sphere collision other is not a sphere.");
 	Sphere* otherSphere = static_cast<Sphere*>(a_collision.other);
-	assert(actorSphere && "IsColliding_Sphere_Sphere collision other is not a sphere.");
 
 	// Distance between origins is less than radii of the spheres, they have collided
 	glm::vec3 collVec = otherSphere->GetPos() - actorSphere->GetPos();
@@ -128,14 +132,14 @@ bool Scene::IsColliding_Sphere_Sphere(Collision& a_collision)
 *	@brief Determine whether there is an overlap between a plane and a sphere.
 *	NOTE: Assumed actor is plane and other is sphere.
 *	@param a_collision is the collision object reference to apply and get possible collision information from.
-*	@return TRUE overlap between objects || FALSE no overlap between spheres
+*	@return TRUE overlap between objects || FALSE no overlap between objects
 */
 bool Scene::IsColliding_Plane_Sphere(Collision& a_collision) {
+	assert(a_collision.actor->GetShape() == PLANE && "IsColliding_Plane_Sphere collision actor is not a plane.");
 	Plane*	actorPlane	= static_cast<Plane*>(a_collision.actor);
-	assert(actorPlane && "IsColliding_Plane_Sphere collision actor is not a plane.");
 
+	assert(a_collision.other->GetShape() == SPHERE && "IsColliding_Plane_Sphere collision other is not a sphere.");
 	Sphere*	otherSphere = static_cast<Sphere*>(a_collision.other);
-	assert(otherSphere && "IsColliding_Plane_Sphere collision other is not a sphere.");
 
 	/// Assume everything is at the origin so positions can also be vectors
 	// 1. Dot-product plane normal with sphere position (aka vector from origin to sphere position) = distance between sphere position and plane
@@ -143,7 +147,7 @@ bool Scene::IsColliding_Plane_Sphere(Collision& a_collision) {
 	// 2. Get final distance by minusing plane distance from sphere distance to account for plane not being at the origin
 	float finalDist = sphereDist - actorPlane->GetDist();
 
-	// 4. Check if overlap is less than the radius of the sphere
+	// 4. Check if final distance is less than the radius of the sphere
 	if (finalDist < otherSphere->GetRadius()) {
 		a_collision.overlap				= otherSphere->GetRadius() - finalDist;		// How much objects have intersected taking sphere radius into account
 		a_collision.collisionNormal		= actorPlane->GetNormal();
@@ -154,6 +158,101 @@ bool Scene::IsColliding_Plane_Sphere(Collision& a_collision) {
 	// No overlapping detected
 	return false;
 }
+
+/**
+*	@brief Determine whether there is an overlap between an AABB and a sphere.
+*	NOTE: Assumed actor is an AABB and other is a sphere.
+*	@param a_collision is the collision object reference to apply and get possible collision information from.
+*	@return TRUE overlap between objects || FALSE no overlap between objects
+*/
+bool Scene::IsColliding_AABB_Sphere(Collision& a_collision) {
+	assert(a_collision.actor->GetShape() == AA_BOX && "IsColliding_AABB_Sphere collision actor is not an AABB.");
+	AABB*	actorAABB = static_cast<AABB*>(a_collision.actor);
+
+	assert(a_collision.other->GetShape() == SPHERE && "IsColliding_Plane_Sphere collision other is not a sphere.");
+	Sphere*	otherSphere = static_cast<Sphere*>(a_collision.other);
+
+	// Save temporary values into vec3 copy so glm::clamp doesn't use volatile memory
+	glm::vec3 AABBMin = actorAABB->GetMin();
+	glm::vec3 AABBMax = actorAABB->GetMax();
+
+	// 1. Get closest point on AABB by clamping sphere position between AABB min and max
+	glm::vec3 closestPoint = glm::clamp(otherSphere->GetPos(), AABBMin, AABBMax);
+	// 2. Create vector from sphere to closest point on AABB
+	glm::vec3 sphereToClosestPoint = otherSphere->GetPos() - closestPoint;		// [B - A]
+	// 3. Get distance between sphere position and AABB by finding length of vector between sphere position and closest point
+	float dist = glm::length(sphereToClosestPoint);
+
+	// 4. Check if distance is less than the radius of the sphere
+	if (dist < otherSphere->GetRadius()) {
+		a_collision.overlap = otherSphere->GetRadius() - dist;		// How much objects have intersected taking sphere radius into account
+
+		// Get collision normal from vector between sphere and closest point and normalize if length isn't 0 to avoid nan errors
+		a_collision.collisionNormal = dist != 0 ? glm::normalize(sphereToClosestPoint) : sphereToClosestPoint;
+
+		return true;
+	}
+
+	return false;
+}
+
+/**
+*	@brief Determine whether there is an overlap between an AABB and an AABB.
+*	NOTE: Assumed actor is an AABB and other is an AABB.
+*	@param a_collision is the collision object reference to apply and get possible collision information from.
+*	@return TRUE overlap between objects || FALSE no overlap between objects
+*/
+bool Scene::IsColliding_AABB_AABB(Collision & a_collision)
+{
+	assert(a_collision.actor->GetShape() == AA_BOX && "IsColliding_AABB_AABB collision actor is not an AABB.");
+	AABB*	actorAABB = static_cast<AABB*>(a_collision.actor);
+
+	assert(a_collision.other->GetShape() == AA_BOX && "IsColliding_AABB_AABB collision other is not a plane.");
+	AABB*	otherAABB = static_cast<AABB*>(a_collision.other);
+
+	glm::vec3 actorMin = actorAABB->GetMin();
+	glm::vec3 actorMax = actorAABB->GetMax();
+
+	glm::vec3 otherMin = otherAABB->GetMin();
+	glm::vec3 otherMax = otherAABB->GetMax();
+
+	// Check if AABB bounding volumes are overlapping
+	if (actorMin.x < otherMax.x && actorMax.x > otherMin.x &&
+		actorMin.y < otherMax.y && actorMax.y > otherMin.y &&
+		actorMin.z < otherMax.z && actorMax.z > otherMin.z)
+	{
+		// B - A to get collision vector for consistency
+		glm::vec3 collVec = otherAABB->GetPos() - actorAABB->GetPos();
+		a_collision.collisionNormal = glm::length(collVec) != 0 ? glm::normalize(collVec) : collVec;	// Normalize collision vector if length is not 0
+
+		// Calculate overlap between AABBs on each axis by using actor max and other min. 
+		//NOTE: Use abs so direction of created vector doesn't matter and ensure that overlap is never negative.
+		float xOverlap = abs((actorMax - otherMin).x);
+		float yOverlap = abs((actorMax - otherMin).y);
+		float zOverlap = abs((actorMax - otherMin).z);
+
+		glm::vec3 overlapVec(xOverlap, yOverlap, zOverlap);
+
+		/*	Convert overlap vector into a total overlap by dot-producting with collision normal to ensure overlap is applied based off 
+			the direction of the collision.
+
+				E.g. if an AABB needs to move (0.1, 5, 7) to no longer be overlapping and one object approaches from the top 
+				(0, 1, 0) then
+					totalOverlap = (0.1, 5, 7) . (0, 1, 0)
+					totalOverlap = (0.1 * 0 + 5 * 1 + 7 * 0)
+					totalOverlap = 5
+
+				Therefore both objects will be moved back 2.5 units along the collision normal to stop them from overlapping
+				because the direction of collision dictates that only the y axis overlap should be considered.
+		*/
+		a_collision.overlap = abs(glm::dot(overlapVec, a_collision.collisionNormal));	// Abs because overlap must never be negative
+		
+		return true;
+	}
+
+	return false;
+}
+
 
 /**
 *	@brief Apply defined gravity force to every object in the scene.
@@ -201,7 +300,9 @@ void Scene::DetectCollisions()
 						}
 						case AA_BOX:
 						{
-							// TODO: Write code for sphere vs AABB collision check
+							if (IsColliding_AABB_Sphere(tempCollision)) {
+								m_collisions.push_back(tempCollision);
+							}
 							break;
 						}
 						case PLANE:
@@ -229,11 +330,32 @@ void Scene::DetectCollisions()
 						}
 						case AA_BOX:
 						{
-							// TODO: Write code for plane vs AABB collision check
+
 							break;
 						}
 					}
 					break;
+				}
+				case AA_BOX:
+				{
+					switch (other->GetShape())
+					{
+						case SPHERE:
+						{
+							if (IsColliding_AABB_Sphere(tempCollision)) {
+								m_collisions.push_back(tempCollision);
+							}
+
+							break;
+						}
+						case AA_BOX:
+						{
+							if (IsColliding_AABB_AABB(tempCollision)) {
+								m_collisions.push_back(tempCollision);
+							}
+							break;
+						}
+					}
 				}
 			}
 		}

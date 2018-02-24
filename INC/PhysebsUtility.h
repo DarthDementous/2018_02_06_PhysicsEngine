@@ -8,7 +8,7 @@
 #define DEFAULT_GRAVITY -9.8f
 
 #define DEFAULT_SPHERE glm::ivec2(16, 16)
-#define DEFAULT_AABB glm::vec3(1, 1, 1)
+#define DEFAULT_AABB glm::vec3(4, 4, 4)
 #define DEFAULT_PLANE_NORMAL glm::vec3(0, 1, 0)
 
 #define DEFAULT_COLOR glm::vec4(0, 0, 0, 1)
@@ -45,7 +45,7 @@ namespace Physebs {
 	*/
 	template<class T>
 	const T& Clamp(const T& a_val, const T& a_upper, const T& a_lower) {
-		return Min<T>(a_upper, Max<T>(a_val, a_lower));
+		return Min<T>(Max<T>(a_val, a_lower), a_upper);
 	}
 
 }

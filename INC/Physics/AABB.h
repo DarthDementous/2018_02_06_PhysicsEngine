@@ -8,7 +8,7 @@ namespace Physebs {
 	public:
 		AABB(const glm::vec3& a_extents = DEFAULT_AABB,
 			const glm::vec3& a_pos = glm::vec3(), float a_mass = DEFAULT_MASS, float a_frict = DEFAULT_FRICTION,
-			bool a_dynamic = false, const glm::vec4& a_color = DEFAULT_COLOR		// Make AABBs static by default
+			bool a_dynamic = true, const glm::vec4& a_color = DEFAULT_COLOR		// Make AABBs static by default
 		);
 
 		virtual ~AABB();
@@ -18,6 +18,9 @@ namespace Physebs {
 		float*				GetExtentsRef()							{ return &m_extents.x; }
 		const glm::vec3&	GetExtents() const						{ return m_extents; }
 		void				SetExtents(const glm::vec3& a_extents)	{ m_extents = a_extents; }
+
+		const glm::vec3&	GetMin() const;
+		const glm::vec3&	GetMax() const;
 	protected:
 		glm::vec3 m_extents;
 	private:

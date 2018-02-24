@@ -48,8 +48,10 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
 #pragma region Manual Object Creation
-	m_scene->AddObject(new Plane(DEFAULT_PLANE_NORMAL, -5));
-	m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 20, 0), 6));
+	//m_scene->AddObject(new Plane(DEFAULT_PLANE_NORMAL, -5));
+	m_scene->AddObject(new AABB(glm::vec3(6, 6, 6), glm::vec3(), 2, 8, false));
+	m_scene->AddObject(new AABB(glm::vec3(4, 4, 4), glm::vec3(0, 30, 0), 10));
+	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 20, 0), 6));
 
 	//static const float massStep = 4.f;
 

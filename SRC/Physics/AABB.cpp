@@ -20,5 +20,28 @@ AABB::~AABB()
 
 void AABB::Draw()
 {
-	aie::Gizmos::addAABBFilled(m_pos, m_extents, m_color);
+	// NOTE: Bootstrap treats extents like half-extents when drawing AABBs despite the parameter name so need to halve extents
+	aie::Gizmos::addAABBFilled(m_pos, m_extents / 2.f, m_color);	
+}
+
+/**
+*	@brief Calculate and return bottom-left most point on the 3D AABB from current half extents and position
+*	@return Minimum point of the AABB.
+*/
+const glm::vec3 & AABB::GetMin() const
+{
+	glm::vec3 halfExtents = m_extents / 2.f;
+
+	return m_pos - halfExtents;
+}
+
+/**
+*	@brief Calculate and return top-right most point on the 3D AABB from current half extents and position
+*	@return Maximum point of the AABB.
+*/
+const glm::vec3 & AABB::GetMax() const
+{
+	glm::vec3 halfExtents = m_extents / 2.f;
+
+	return m_pos + halfExtents;
 }

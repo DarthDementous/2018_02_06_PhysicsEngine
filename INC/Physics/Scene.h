@@ -44,6 +44,8 @@ namespace Physebs {
 
 		static bool IsColliding_Sphere_Sphere(Collision& a_collision);
 		static bool IsColliding_Plane_Sphere(Collision& a_collision);
+		static bool IsColliding_AABB_Sphere(Collision& a_collision);
+		static bool IsColliding_AABB_AABB(Collision& a_collision);
 
 		const std::vector<Rigidbody*>& GetObjects()	const				{ return m_objects; }
 
