@@ -1,7 +1,7 @@
 #pragma once
 
 // The limit point before a value will be zeroed
-#define EPSILON 0.01f
+#define EPSILON 0.001f
 
 #define DEFAULT_MASS 2.f
 #define DEFAULT_FRICTION 8.f
@@ -12,6 +12,10 @@
 #define DEFAULT_PLANE_NORMAL glm::vec3(0, 1, 0)
 
 #define DEFAULT_COLOR glm::vec4(0, 0, 0, 1)
+
+#define DEFAULT_SPRINGINESS 20.f
+#define DEFAULT_SPRING_LENGTH 10.f
+#define DEFAULT_SPRING_DAMPENING 0.5f
 
 namespace Physebs {
 	/**

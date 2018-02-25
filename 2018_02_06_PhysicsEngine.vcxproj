@@ -167,10 +167,12 @@
     <ClCompile Include="..\..\Visual Studio Projects\aieBootstrap-master\dependencies\imgui\imgui_demo.cpp" />
     <ClCompile Include="SRC\Camera\Camera.cpp" />
     <ClCompile Include="SRC\Physics\AABB.cpp" />
+    <ClCompile Include="SRC\Physics\Constraint.cpp" />
     <ClCompile Include="SRC\Physics\Plane.cpp" />
     <ClCompile Include="SRC\Physics\Rigidbody.cpp" />
     <ClCompile Include="SRC\Physics\Scene.cpp" />
     <ClCompile Include="SRC\Physics\Sphere.cpp" />
+    <ClCompile Include="SRC\Physics\Spring.cpp" />
     <ClCompile Include="_2018_02_06_PhysicsEngineApp.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
@@ -178,10 +180,12 @@
     <ClInclude Include="INC\Camera\Camera.h" />
     <ClInclude Include="INC\PhysebsUtility.h" />
     <ClInclude Include="INC\Physics\AABB.h" />
+    <ClInclude Include="INC\Physics\Constraint.h" />
     <ClInclude Include="INC\Physics\Plane.h" />
     <ClInclude Include="INC\Physics\Rigidbody.h" />
     <ClInclude Include="INC\Physics\Scene.h" />
     <ClInclude Include="INC\Physics\Sphere.h" />
+    <ClInclude Include="INC\Physics\Spring.h" />
     <ClInclude Include="_2018_02_06_PhysicsEngineApp.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

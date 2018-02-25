@@ -28,7 +28,7 @@ void AABB::Draw()
 *	@brief Calculate and return bottom-left most point on the 3D AABB from current half extents and position
 *	@return Minimum point of the AABB.
 */
-const glm::vec3 & AABB::GetMin() const
+glm::vec3 AABB::CalculateMin() const
 {
 	glm::vec3 halfExtents = m_extents / 2.f;
 
@@ -39,7 +39,7 @@ const glm::vec3 & AABB::GetMin() const
 *	@brief Calculate and return top-right most point on the 3D AABB from current half extents and position
 *	@return Maximum point of the AABB.
 */
-const glm::vec3 & AABB::GetMax() const
+glm::vec3 AABB::CalculateMax() const
 {
 	glm::vec3 halfExtents = m_extents / 2.f;
 

@@ -8,6 +8,7 @@
 #include "Physics\Scene.h"
 #include "Physics\AABB.h"
 #include "Camera\Camera.h"
+#include "Physics\Spring.h"
 #include <algorithm>
 #include <iostream>
 #include <imgui.h>
@@ -48,10 +49,19 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
 #pragma region Manual Object Creation
+	//m_scene->AddObject(new AABB(glm::vec3(6, 6, 6), glm::vec3(), 10, 8, false));
+	//m_scene->AddObject(new AABB(glm::vec3(4, 4, 4), glm::vec3(10, -10, 0), 15, 8, true));
+	//m_scene->AddObject(new Plane());
+
+	m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 10, 2), 6, 8, true));
+	m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 20, 2), 6, 8, true));
+	m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 30, 2), 6, 8, true));
+
+	m_scene->AddConstraint(new Spring(m_scene->GetObjects()[0], m_scene->GetObjects()[1]));
+	m_scene->AddConstraint(new Spring(m_scene->GetObjects()[1], m_scene->GetObjects()[2]));
+
 	//m_scene->AddObject(new Plane(DEFAULT_PLANE_NORMAL, -5));
-	m_scene->AddObject(new AABB(glm::vec3(6, 6, 6), glm::vec3(), 2, 8, false));
-	m_scene->AddObject(new AABB(glm::vec3(4, 4, 4), glm::vec3(0, 30, 0), 10));
-	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 20, 0), 6));
+	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 60, 2), 6));
 
 	//static const float massStep = 4.f;
 
@@ -94,7 +104,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 #pragma region IMGUI
 	// Ensure size and position is only set once and ignores whatever is in imgui.cfg
-	ImGui::SetNextWindowSize(ImVec2(580, 550), ImGuiSetCond_Once);		
+	ImGui::SetNextWindowSize(ImVec2(580, 600), ImGuiSetCond_Once);		
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_Once);
 	ImGui::Begin("Physics Engine Interface");
 
@@ -216,8 +226,8 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 #pragma region Object Selector
 	if (ImGui::CollapsingHeader("Object Selector")) {
 		// TODO: Have certain variable parameters appear depending on what type of rigidbody the object is instead of assuming every object is a sphere
-							
-		static size_t	selectedObjIndex	= 0;		// Always start off looking at the first object
+
+		static size_t	selectedObjIndex = 0;		// Always start off looking at the first object
 
 		// There are objects in the scene to select
 		if (!m_scene->GetObjects().empty()) {
@@ -279,12 +289,85 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 				// Delete allocated memory
 				delete currentObj;
 			}
-			
+
 		}
 
 
 
 	}
+#pragma endregion
+
+#pragma region Constraint Creator
+	if (ImGui::CollapsingHeader("Constraint Creator")) {
+		// Display constraint type options
+		static int constraintType = SPRING;
+		ImGui::RadioButton("Spring", &constraintType, 0);
+
+		// Universal Constraint options
+		static unsigned int attachedActorIndex = 0;
+		static unsigned int attachedOtherIndex = 1;
+
+		// There is at least one object, display un-editable object data for current selected actor
+		if (m_scene->GetObjects().size() > 0) {
+			Rigidbody* selectedActor = m_scene->GetObjects()[attachedActorIndex];
+			std::string actorShape;
+
+			if (selectedActor->GetShape() == SPHERE) {
+				actorShape = "SPHERE";
+			}
+			if (selectedActor->GetShape() == PLANE) {
+				actorShape = "PLANE";
+			}
+			if (selectedActor->GetShape() == AA_BOX) {
+				actorShape = "AABB";
+			}
+
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), actorShape.c_str());
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), 
+				"Actor Position: %f, %f, %f", selectedActor->GetPos().x, selectedActor->GetPos().y, selectedActor->GetPos().z);
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Actor Color: ");
+			
+			ImGui::SameLine();
+
+			ImGui::TextColored(
+				ImVec4(selectedActor->GetColor().r, selectedActor->GetColor().g, selectedActor->GetColor().b, selectedActor->GetColor().a),
+				"%f, %f, %f", selectedActor->GetColor().x, selectedActor->GetColor().y, selectedActor->GetColor().z
+			);
+			ImGui::TextColored(ImVec4(1, 0, 0, 1),
+				selectedActor->GetIsDynamic() ? "Actor Is Dynamic: TRUE" : "Actor Is Dynamic: FALSE");
+
+				// There is at least two objects, display un-editable object data for current selected other
+				if (m_scene->GetObjects().size() > 1) {
+					Rigidbody* selectedOther = m_scene->GetObjects()[attachedOtherIndex];
+					std::string otherShape;
+
+					if (selectedOther->GetShape() == SPHERE) {
+						otherShape = "SPHERE";
+					}
+					if (selectedOther->GetShape() == PLANE) {
+						otherShape = "PLANE";
+					}
+					if (selectedOther->GetShape() == AA_BOX) {
+						otherShape = "AABB";
+					}
+
+					ImGui::TextColored(ImVec4(0, 0, 1, 1), actorShape.c_str());
+					ImGui::TextColored(ImVec4(0, 0, 1, 1),
+						"Other Position: %f, %f, %f", selectedOther->GetPos().x, selectedOther->GetPos().y, selectedOther->GetPos().z);
+					ImGui::TextColored(ImVec4(0, 0, 1, 1), "Other Color: ");
+
+					ImGui::SameLine();
+
+					ImGui::TextColored(
+						ImVec4(selectedOther->GetColor().r, selectedOther->GetColor().g, selectedOther->GetColor().b, selectedOther->GetColor().a),
+						"%f, %f, %f", selectedOther->GetColor().x, selectedOther->GetColor().y, selectedOther->GetColor().z);
+					ImGui::TextColored(ImVec4(0, 0, 1, 1),
+						selectedOther->GetIsDynamic() ? "Other Is Dynamic: TRUE" : "Other Is Dynamic: FALSE");
+
+				}
+		}
+	}
+
 #pragma endregion
 
 	ImGui::End();

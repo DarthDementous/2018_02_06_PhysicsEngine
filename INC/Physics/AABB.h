@@ -19,8 +19,9 @@ namespace Physebs {
 		const glm::vec3&	GetExtents() const						{ return m_extents; }
 		void				SetExtents(const glm::vec3& a_extents)	{ m_extents = a_extents; }
 
-		const glm::vec3&	GetMin() const;
-		const glm::vec3&	GetMax() const;
+		// NOTE: Do not return references because function is returning temporary memory
+		glm::vec3	CalculateMin() const;
+		glm::vec3	CalculateMax() const;
 	protected:
 		glm::vec3 m_extents;
 	private:
