@@ -62,8 +62,8 @@ void Rigidbody::Update(float a_dt)
 
 		// Calculate position
 		m_pos += m_vel * a_dt;
-
-		// Reset acceleration so it gets re-calculated
-		m_accel = glm::vec3();
 	}
+
+	// Reset acceleration so it gets re-calculated (regardless of static or dynamic)
+	m_accel = glm::vec3();
 }

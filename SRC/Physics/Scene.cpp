@@ -88,7 +88,7 @@ void Scene::AddObject(Rigidbody * a_obj)
 }
 
 /**
-*	@brief Find and remove an object from the scene as well erasing its dynamically allocated memory.
+*	@brief Find and remove an object from the scene (do not delete memory, no longer responsible for object)
 *	@param a_obj is the object to remove.
 *	@return void.
 */
@@ -98,9 +98,6 @@ void Scene::RemoveObject(Rigidbody * a_obj)
 	auto foundIter = std::find(m_objects.begin(), m_objects.end(), a_obj);
 
 	assert(foundIter != m_objects.end() && "Attempted to remove object from scene that it does not own.");
-
-	// Clear memory
-	delete *foundIter;
 
 	m_objects.erase(foundIter);
 }
@@ -116,7 +113,7 @@ void Scene::AddConstraint(Constraint * a_constraint)
 }
 
 /**
-*	@brief Find and remove a constraint from the scene as well erasing its dynamically allocated memory.
+*	@brief Find and remove a constraint from the scene (do not delete memory, no longer responsible for constraint)
 *	@param a_constraint is the constraint to remove.
 *	@return void.
 */
@@ -126,9 +123,6 @@ void Scene::RemoveConstraint(Constraint * a_constraint)
 	auto foundIter = std::find(m_constraints.begin(), m_constraints.end(), a_constraint);
 
 	assert(foundIter != m_constraints.end() && "Attempted to remove constraint from scene that it does not own.");
-
-	// Clear memory
-	delete *foundIter;
 
 	m_constraints.erase(foundIter);
 }
@@ -356,12 +350,15 @@ bool Scene::IsColliding_AABB_AABB(Collision & a_collision)
 
 		a_collision.overlap = glm::length(overlapVec);
 		
-		// B - A to get collision vector for consistency
+		//// B - A to get collision vector for consistency
 		glm::vec3 collVec = otherAABB->GetPos() - actorAABB->GetPos();
-		a_collision.collisionNormal = glm::length(collVec) != 0 ? glm::normalize(collVec) : collVec;	// Normalize collision vector if length is not 0
 
-#else 
+		// Get collision normal by reflecting velocity
+		//glm::vec3 collVec				= -otherAABB->GetVel();
 
+		a_collision.collisionNormal		= glm::length(collVec) != 0 ? glm::normalize(collVec) : collVec;	// Normalize collision vector if length is not 0#else 
+
+#else
 		/// THIS METHOD IS ONLY ACCURATE IF ACTOR IS ON THE LEFT AND OTHER IS ON THE RIGHT
 		// Calculate overlap between AABBs on each axis by using actor max and other min. 
 		//NOTE: Use abs so direction of created vector doesn't matter and ensure that overlap is never negative.
@@ -585,7 +582,7 @@ void Scene::ApplyKnockback_Dynamic(Collision& a_collision)
 *	@param a_collision is the collision object reference to apply and get possible collision information from.
 *	@return void.
 */
-void Physebs::Scene::ApplyKnockback_Static(Collision& a_collision)
+void Scene::ApplyKnockback_Static(Collision& a_collision)
 {
 	const float restitution = 0.5f;
 

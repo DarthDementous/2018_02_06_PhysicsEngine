@@ -8,12 +8,13 @@ using namespace Physebs;
 
 Spring::Spring
 (
-	Rigidbody* a_attachedActor, Rigidbody* a_attachedOther,
+	Rigidbody* a_attachedActor, Rigidbody* a_attachedOther, const glm::vec4& a_color,
 	float a_springiness, float a_restLength
 ) :
-	Constraint(a_attachedActor, a_attachedOther),
+	Constraint(a_attachedActor, a_attachedOther, a_color),
 	m_springiness(a_springiness), m_restLength(a_restLength)
 {
+	m_type = SPRING;
 }
 
 Spring::~Spring()
@@ -54,13 +55,21 @@ void Spring::Constrain()
 	// NOTE: If constrain condition is not met (not at resting length) then only dampening will be applied.
 	glm::vec3 finalSpringForce	= springVec * retractScale;		// Apply force along spring
 
-	m_attachedActor->ApplyForce(-finalSpringForce);
-	m_attachedOther->ApplyForce(finalSpringForce);
+	// Only apply force to dynamic Rigidbodies
+	if (m_attachedActor->GetIsDynamic()) {
+
+		m_attachedActor->ApplyForce(-finalSpringForce);
+	}
+
+	if (m_attachedOther->GetIsDynamic()) {
+
+		m_attachedOther->ApplyForce(finalSpringForce);
+	}
 
 }
 
 void Spring::Draw()
 {
 	// Draw line between attached Rigidbodies to simulate the 'spring'
-	aie::Gizmos::addLine(m_attachedActor->GetPos(), m_attachedOther->GetPos(), glm::vec4(1, 1, 0, 1));
+	aie::Gizmos::addLine(m_attachedActor->GetPos(), m_attachedOther->GetPos(), m_color);
 }

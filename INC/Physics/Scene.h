@@ -71,6 +71,7 @@ namespace Physebs {
 		static bool IsColliding_AABB_AABB(Collision& a_collision);
 
 		const std::vector<Rigidbody*>& GetObjects()	const				{ return m_objects; }
+		const std::vector<Constraint*>& GetConstraints() const			{ return m_constraints; }
 
 		const glm::vec3&	GetGravity() const							{ return m_gravity; }
 		void				SetGravity(const glm::vec3& a_gravity)		{ m_gravity = a_gravity; }

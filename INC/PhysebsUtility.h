@@ -12,6 +12,7 @@
 #define DEFAULT_PLANE_NORMAL glm::vec3(0, 1, 0)
 
 #define DEFAULT_COLOR glm::vec4(0, 0, 0, 1)
+#define DEFAULT_CONSTRAINT_COLOR glm::vec4(1, 1, 0, 1)
 
 #define DEFAULT_SPRINGINESS 20.f
 #define DEFAULT_SPRING_LENGTH 10.f

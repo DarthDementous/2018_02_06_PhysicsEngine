@@ -32,7 +32,7 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	setBackgroundColour(0.25f, 0.25f, 0.25f);
 
 	// initialise gizmo primitive counts
-	Gizmos::create(10000, 10000, 10000, 10000);
+	Gizmos::create(100000, 100000, 100000, 100000);
 
 	//// create simple camera transforms
 	//m_viewMatrix = glm::lookAt(vec3(10), vec3(0), vec3(0, 1, 0));
@@ -49,16 +49,40 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
 #pragma region Manual Object Creation
+	/// Create 2D grid of spheres
+	static int gridX = 4;
+	static int gridY = 4;
+	
+	static int gridStartX = 0;
+	static int gridStartY = 40;
+
+	static float offsetX = 10;
+	static float offsetY = 10;
+
+	static float spacing = 10;
+
+	// r x c
+	for (int y = 0; y < gridY; y++) {
+		for (int x = 0; x < gridX; x++) {
+			// Add sphere to current grid spot
+			glm::vec3 currentSpawnPos = glm::vec3(gridStartX + offsetX + (x * spacing), gridStartY + offsetY + (y * spacing), 0);
+
+			m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, currentSpawnPos));
+
+
+		}
+	}
+
 	//m_scene->AddObject(new AABB(glm::vec3(6, 6, 6), glm::vec3(), 10, 8, false));
 	//m_scene->AddObject(new AABB(glm::vec3(4, 4, 4), glm::vec3(10, -10, 0), 15, 8, true));
 	//m_scene->AddObject(new Plane());
 
-	m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 10, 2), 6, 8, true));
-	m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 20, 2), 6, 8, true));
-	m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 30, 2), 6, 8, true));
+	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(10, 0, 2), 6, 8, true));
+	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 20, 2), 6, 8, true));
+	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 30, 2), 6, 8, true));
 
-	m_scene->AddConstraint(new Spring(m_scene->GetObjects()[0], m_scene->GetObjects()[1]));
-	m_scene->AddConstraint(new Spring(m_scene->GetObjects()[1], m_scene->GetObjects()[2]));
+	//m_scene->AddConstraint(new Spring(m_scene->GetObjects()[0], m_scene->GetObjects()[1]));
+	//m_scene->AddConstraint(new Spring(m_scene->GetObjects()[1], m_scene->GetObjects()[2]));
 
 	//m_scene->AddObject(new Plane(DEFAULT_PLANE_NORMAL, -5));
 	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 60, 2), 6));
@@ -104,7 +128,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 #pragma region IMGUI
 	// Ensure size and position is only set once and ignores whatever is in imgui.cfg
-	ImGui::SetNextWindowSize(ImVec2(580, 600), ImGuiSetCond_Once);		
+	ImGui::SetNextWindowSize(ImVec2(600, 600), ImGuiSetCond_Once);		
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_Once);
 	ImGui::Begin("Physics Engine Interface");
 
@@ -232,9 +256,11 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 		// There are objects in the scene to select
 		if (!m_scene->GetObjects().empty()) {
 			// Clamp index with vector constraints to ensure there is no overflow when an object is deleted
-			selectedObjIndex = Physebs::Clamp<size_t>(selectedObjIndex, m_scene->GetObjects().size() - 1, 0);
+			selectedObjIndex = Physebs::Clamp<int>(selectedObjIndex, m_scene->GetObjects().size() - 1, 0);
 
 			Rigidbody* currentObj = m_scene->GetObjects()[selectedObjIndex];
+
+			ImGui::Text("OBJECT #%i", selectedObjIndex + 1);
 
 			// Plug references to current universal rigidbody variables into input fields so they update in real-time
 			ImGui::InputFloat3("Current Position", currentObj->GetPosRef(), 2);
@@ -267,7 +293,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			}
 
 			// User has selected previous object
-			if (ImGui::Button("Prev")) {
+			if (ImGui::Button("Prev Object")) {
 
 				--selectedObjIndex;
 			}
@@ -276,7 +302,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			ImGui::SameLine();
 
 			// User has selected next object
-			if (ImGui::Button("Next")) {
+			if (ImGui::Button("Next Object")) {
 
 				++selectedObjIndex;
 			}
@@ -286,7 +312,17 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 				// Remove from scene (NOTE: DOES NOT DELETE THE MEMORY)
 				m_scene->RemoveObject(currentObj);
 
-				// Delete allocated memory
+				// If connected via constraint, remove and delete attached constraint
+				for (auto constraint : m_scene->GetConstraints()) {
+
+					if (constraint->ContainsObj(currentObj)) {
+
+						m_scene->RemoveConstraint(constraint);
+						delete constraint;
+					}
+				}
+
+				// Delete object allocated memory
 				delete currentObj;
 			}
 
@@ -299,16 +335,23 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 #pragma region Constraint Creator
 	if (ImGui::CollapsingHeader("Constraint Creator")) {
-		// Display constraint type options
-		static int constraintType = SPRING;
-		ImGui::RadioButton("Spring", &constraintType, 0);
+		// There are at least two objects, a constraint can be created
+		if (m_scene->GetObjects().size() > 1) {
+			// Display constraint type options
+			static int constraintType = SPRING;
+			ImGui::RadioButton("Spring", &constraintType, 0);
 
-		// Universal Constraint options
-		static unsigned int attachedActorIndex = 0;
-		static unsigned int attachedOtherIndex = 1;
+			/// Universal constraint options
+			static float constraintColor[4] = { DEFAULT_CONSTRAINT_COLOR.r, DEFAULT_CONSTRAINT_COLOR.g, DEFAULT_CONSTRAINT_COLOR.b, DEFAULT_CONSTRAINT_COLOR.a };
+			ImGui::ColorEdit4("Constraint Color", constraintColor);
 
-		// There is at least one object, display un-editable object data for current selected actor
-		if (m_scene->GetObjects().size() > 0) {
+			glm::vec4 currentColor = glm::vec4(constraintColor[0], constraintColor[1], constraintColor[2], constraintColor[3]);
+
+			static int attachedActorIndex = 0;
+			static int attachedOtherIndex = 1;		// Starts at one past the actor by default
+			
+#pragma region Mini Actor Selector
+			attachedActorIndex = Physebs::Clamp<int>(attachedActorIndex, m_scene->GetObjects().size() - 1, 0);		// Ensure selected actor doesn't overflow
 			Rigidbody* selectedActor = m_scene->GetObjects()[attachedActorIndex];
 			std::string actorShape;
 
@@ -322,11 +365,11 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 				actorShape = "AABB";
 			}
 
-			ImGui::TextColored(ImVec4(1, 0, 0, 1), actorShape.c_str());
-			ImGui::TextColored(ImVec4(1, 0, 0, 1), 
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s #%i", actorShape.c_str(), attachedActorIndex + 1);
+			ImGui::TextColored(ImVec4(1, 0, 0, 1),
 				"Actor Position: %f, %f, %f", selectedActor->GetPos().x, selectedActor->GetPos().y, selectedActor->GetPos().z);
 			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Actor Color: ");
-			
+
 			ImGui::SameLine();
 
 			ImGui::TextColored(
@@ -336,37 +379,131 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			ImGui::TextColored(ImVec4(1, 0, 0, 1),
 				selectedActor->GetIsDynamic() ? "Actor Is Dynamic: TRUE" : "Actor Is Dynamic: FALSE");
 
-				// There is at least two objects, display un-editable object data for current selected other
-				if (m_scene->GetObjects().size() > 1) {
-					Rigidbody* selectedOther = m_scene->GetObjects()[attachedOtherIndex];
-					std::string otherShape;
+			// Cycle to previous actor
+			if (ImGui::SmallButton("Prev Actor")) {
+				--attachedActorIndex;
+			}
 
-					if (selectedOther->GetShape() == SPHERE) {
-						otherShape = "SPHERE";
-					}
-					if (selectedOther->GetShape() == PLANE) {
-						otherShape = "PLANE";
-					}
-					if (selectedOther->GetShape() == AA_BOX) {
-						otherShape = "AABB";
-					}
+			ImGui::SameLine();
 
-					ImGui::TextColored(ImVec4(0, 0, 1, 1), actorShape.c_str());
-					ImGui::TextColored(ImVec4(0, 0, 1, 1),
-						"Other Position: %f, %f, %f", selectedOther->GetPos().x, selectedOther->GetPos().y, selectedOther->GetPos().z);
-					ImGui::TextColored(ImVec4(0, 0, 1, 1), "Other Color: ");
+			// Cycle to next actor
+			if (ImGui::SmallButton("Next Actor")) {
+				++attachedActorIndex;
+			}
+#pragma endregion
 
-					ImGui::SameLine();
+#pragma region Mini Other Selector
+			/// Other selector
+			attachedOtherIndex = Physebs::Clamp<int>(attachedOtherIndex, m_scene->GetObjects().size() - 1, 0);		// Ensure selected actor doesn't overflow
 
-					ImGui::TextColored(
-						ImVec4(selectedOther->GetColor().r, selectedOther->GetColor().g, selectedOther->GetColor().b, selectedOther->GetColor().a),
-						"%f, %f, %f", selectedOther->GetColor().x, selectedOther->GetColor().y, selectedOther->GetColor().z);
-					ImGui::TextColored(ImVec4(0, 0, 1, 1),
-						selectedOther->GetIsDynamic() ? "Other Is Dynamic: TRUE" : "Other Is Dynamic: FALSE");
+			Rigidbody* selectedOther = m_scene->GetObjects()[attachedOtherIndex];
+			std::string otherShape;
 
+			if (selectedOther->GetShape() == SPHERE) {
+				otherShape = "SPHERE";
+			}
+			if (selectedOther->GetShape() == PLANE) {
+				otherShape = "PLANE";
+			}
+			if (selectedOther->GetShape() == AA_BOX) {
+				otherShape = "AABB";
+			}
+
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s #%i", otherShape.c_str(), attachedOtherIndex + 1);
+			ImGui::TextColored(ImVec4(0, 0, 1, 1),
+				"Other Position: %f, %f, %f", selectedOther->GetPos().x, selectedOther->GetPos().y, selectedOther->GetPos().z);
+			ImGui::TextColored(ImVec4(0, 0, 1, 1), "Other Color: ");
+
+			ImGui::SameLine();
+
+			ImGui::TextColored(
+				ImVec4(selectedOther->GetColor().r, selectedOther->GetColor().g, selectedOther->GetColor().b, selectedOther->GetColor().a),
+				"%f, %f, %f", selectedOther->GetColor().x, selectedOther->GetColor().y, selectedOther->GetColor().z);
+			ImGui::TextColored(ImVec4(0, 0, 1, 1),
+				selectedOther->GetIsDynamic() ? "Other Is Dynamic: TRUE" : "Other Is Dynamic: FALSE");
+
+			// Cycle to previous other
+			if (ImGui::SmallButton("Prev Other")) {
+				--attachedOtherIndex;
+			}
+
+			ImGui::SameLine();
+
+			// Cycle to next actor
+			if (ImGui::SmallButton("Next Other")) {
+				++attachedOtherIndex;
+			}
+#pragma endregion
+
+			/// Constraint-type specific attributes
+			// Display spring attributes
+			if (constraintType == SPRING) {
+				static float springiness = DEFAULT_SPRINGINESS;
+				static float restLength = DEFAULT_SPRING_LENGTH;
+
+				ImGui::InputFloat("Springiness", &springiness, 1.f);
+				ImGui::InputFloat("Rest Length", &restLength, 1.f);
+
+				// User wants to create spring
+				if (ImGui::SmallButton("Attach Spring")) {
+					m_scene->AddConstraint(new Spring(selectedActor, selectedOther, currentColor, springiness, restLength));
 				}
+			}
+		}
+
+		
+		
+	}
+
+#pragma endregion
+
+#pragma region Constraint Selector
+	if (ImGui::CollapsingHeader("Constraint Selector")) {
+		
+		static int selectedConstraintIndex = 0;
+		
+		// There are constraints in the scene to select
+		if (m_scene->GetConstraints().size() != 0) {
+			// Clamp index by vector constraints
+			selectedConstraintIndex = Physebs::Clamp<int>(selectedConstraintIndex, m_scene->GetConstraints().size() - 1, 0);
+			ImGui::Text("CONSTRAINT #%i", selectedConstraintIndex + 1);
+
+			Constraint* currentConstraint = m_scene->GetConstraints()[selectedConstraintIndex];
+
+			// Display editable properties of selected constraint
+			/// Universal
+			ImGui::ColorEdit4("Current Constraint Color", currentConstraint->GetColorRef());
+
+			/// Specific to type
+			if (currentConstraint->GetType() == SPRING) {
+				Spring* currentSpring = static_cast<Spring*>(currentConstraint);
+
+				ImGui::InputFloat("Current Springiness", currentSpring->GetSpringinessRef(), 1.f);
+				ImGui::InputFloat("Current Rest Length", currentSpring->GetRestLengthRef(), 1.f);
+			}
+
+			// Cycle to previous constraint
+			if (ImGui::SmallButton("Prev Constraint")) {
+				--selectedConstraintIndex;
+			}
+
+			ImGui::SameLine();
+
+			// Cycle to next constraint
+			if (ImGui::SmallButton("Next Constraint")) {
+				++selectedConstraintIndex;
+			}
+
+			// User wants to remove constraint from scene
+			if (ImGui::SmallButton("Delete Constraint")) {
+				m_scene->RemoveConstraint(currentConstraint);
+
+				// Delete dynamically allocated memory to avoid memory leaks
+				delete currentConstraint;
+			}
 		}
 	}
+
 
 #pragma endregion
 
