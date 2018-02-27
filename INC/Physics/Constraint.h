@@ -22,6 +22,9 @@ namespace Physebs {
 
 		eConstraint GetType() const { return m_type; }
 		float*		GetColorRef()	{ return &m_color.r; }
+
+		Rigidbody*	GetAttachedActor() const { return m_attachedActor; }
+		Rigidbody*	GetAttachedOther() const { return m_attachedOther; }
 	protected:
 		Rigidbody* m_attachedActor;
 		Rigidbody* m_attachedOther;

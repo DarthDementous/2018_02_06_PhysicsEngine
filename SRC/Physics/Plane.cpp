@@ -25,7 +25,18 @@ Plane::~Plane()
 
 void Plane::Draw()
 {
+	// 1. Find center position of plane using normal and distance
+	glm::vec3 planePos = m_pos;
+	// 2. Find direction of the plane lines (what is physically drawn) by finding vector perpendicular to the normal (cross-product with arbitrary vector)
+	glm::vec3 arbitraryVec	= m_normal + 1.f;		// Slightly off-centered vector ensures its never parallel (cross-product returns 0, 0, 0);
+	glm::vec3 planeLineDir	= glm::normalize(glm::cross(m_normal, arbitraryVec));
+	glm::vec3 planeLineDir2 = glm::normalize(glm::cross(planeLineDir, m_normal));
+	// 3. Calculate four points along plane lines required to draw plane by using max draw distance to simulate it being infinite
+	glm::vec3 v1 = planePos + (planeLineDir * PLANE_DRAW);
+	glm::vec3 v2 = planePos - (planeLineDir * PLANE_DRAW);
+	glm::vec3 v3 = planePos + (planeLineDir2 * PLANE_DRAW);
+	glm::vec3 v4 = planePos - (planeLineDir2 * PLANE_DRAW);
 
-	//TODO: Draw tri that's as wide as the camera bounds to give the impression of being an infinite plane
-	//aie::Gizmos::add2DTri()
+	aie::Gizmos::addTri(v1, v2, v3, m_color);
+	aie::Gizmos::addTri(v4, v2, v1, m_color);
 }

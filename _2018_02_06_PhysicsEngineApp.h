@@ -30,7 +30,6 @@ protected:
 	glm::mat4	m_projectionMatrix;
 
 	// Physics
-	Physebs::Rigidbody* m_object	= nullptr;
 	Physebs::Scene*		m_scene		= nullptr;
 
 };

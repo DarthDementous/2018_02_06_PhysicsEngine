@@ -13,6 +13,19 @@
 
 #define DEFAULT_COLOR glm::vec4(0, 0, 0, 1)
 #define DEFAULT_CONSTRAINT_COLOR glm::vec4(1, 1, 0, 1)
+#define DEFAULT_SELECTION_COLOR glm::vec4(0, 1, 0, 0.5)
+#define DEFAULT_ACTOR_SELECTION_COLOR glm::vec4(1, 0, 0, 0.5)
+#define DEFAULT_OTHER_SELECTION_COLOR glm::vec4(0, 0, 1, 0.5)
+#define DEFAULT_CONSTRAINT_SELECTION_COLOR glm::vec4(1, 0.7, 0, 0.5)
+
+#define CAMERA_NEAR 0.1f
+#define CAMERA_FAR 1000.f
+
+#define PLANE_DRAW CAMERA_FAR
+
+#define DEFAULT_SELECTION_RADIUS 4.f
+
+#define DEFAULT_SELECTION_SPHERE glm::ivec2(6, 6)
 
 #define DEFAULT_SPRINGINESS 20.f
 #define DEFAULT_SPRING_LENGTH 10.f

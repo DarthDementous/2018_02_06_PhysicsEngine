@@ -40,7 +40,7 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 
 	// Custom camera calibration
 	m_camera = new Camera();
-	m_camera->SetProjection(glm::radians(45.0f), (float)getWindowWidth() / (float)getWindowHeight(), 0.1f, 1000.0f);
+	m_camera->SetProjection(glm::radians(45.0f), (float)getWindowWidth() / (float)getWindowHeight(), CAMERA_NEAR, CAMERA_FAR);
 	m_camera->SetPosition(glm::vec3(10, 10, 10));
 	m_camera->Lookat(glm::vec3(0, 0, 0));
 
@@ -48,6 +48,7 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_scene = new Scene();
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
+#if 0
 #pragma region Manual Object Creation
 	/// Create 2D grid of spheres
 	static int gridX = 4;
@@ -105,8 +106,7 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 
 	//m_scene->AddObject(bigboi);
 #pragma endregion
-
-	
+#endif
 	return true;
 }
 
@@ -187,6 +187,9 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			ImGui::InputFloat("Radius", &radius, 1.f, 0.f, 2);
 			ImGui::InputFloat2("Dimensions", dim, 2);
 
+			/// Create outline of projected sphere from current selected variables
+			aie::Gizmos::addSphere(currentPos, radius, DEFAULT_SPHERE.x, DEFAULT_SPHERE.y, glm::vec4(currentColor.r, currentColor.g, currentColor.b, 0.25));
+
 			if (ImGui::SmallButton("Spawn Sphere")) {
 				glm::vec2 currentDim = glm::vec2(dim[0], dim[1]);
 
@@ -205,9 +208,10 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			ImGui::InputFloat("Distance From Origin", &dist);
 
 			if (ImGui::SmallButton("Spawn Plane")) {
-				glm::vec3 currentNormal = glm::vec3(normal[0], normal[1], normal[2]);
+				glm::vec3 currentNormal		= glm::vec3(normal[0], normal[1], normal[2]);
+				glm::vec3 currentPlanePos	= currentNormal * dist;					// Ignore user input for position and create it from normal and distance
 
-				m_scene->AddObject(new Plane(currentNormal, dist, currentPos, mass, friction, b_dynamic, currentColor));
+				m_scene->AddObject(new Plane(currentNormal, dist, currentPlanePos, mass, friction, b_dynamic, currentColor));
 				b_createdObj = true;
 			}
 		}
@@ -216,12 +220,14 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 		if (shape == AA_BOX) {
 			// AABB options
 			static float extents[3] = { DEFAULT_AABB.x, DEFAULT_AABB.y, DEFAULT_AABB.z };
-
 			ImGui::InputFloat3("Extents", extents, 2);
+			
+			glm::vec3 currentExtents = glm::vec3(extents[0], extents[1], extents[2]);
+
+			/// Create outline of projected AABB from selected variables
+			aie::Gizmos::addAABB(currentPos, currentExtents / 2.f, currentColor);		// Bootstrap treats AABB extents as half extents
 
 			if (ImGui::SmallButton("Spawn AABB")) {
-				glm::vec3 currentExtents = glm::vec3(extents[0], extents[1], extents[2]);
-
 				m_scene->AddObject(new AABB(currentExtents, currentPos, mass, friction, b_dynamic, currentColor));
 				b_createdObj = true;
 			}
@@ -259,6 +265,9 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			selectedObjIndex = Physebs::Clamp<int>(selectedObjIndex, m_scene->GetObjects().size() - 1, 0);
 
 			Rigidbody* currentObj = m_scene->GetObjects()[selectedObjIndex];
+
+			/// Indicate selection via low-poly sphere at selected object position
+			aie::Gizmos::addSphere(currentObj->GetPos(), DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.y, DEFAULT_SELECTION_COLOR);
 
 			ImGui::Text("OBJECT #%i", selectedObjIndex + 1);
 
@@ -353,6 +362,10 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 #pragma region Mini Actor Selector
 			attachedActorIndex = Physebs::Clamp<int>(attachedActorIndex, m_scene->GetObjects().size() - 1, 0);		// Ensure selected actor doesn't overflow
 			Rigidbody* selectedActor = m_scene->GetObjects()[attachedActorIndex];
+
+			/// Indicate selection via low-poly sphere at selected actor position
+			aie::Gizmos::addSphere(selectedActor->GetPos(), DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.y, DEFAULT_ACTOR_SELECTION_COLOR);
+
 			std::string actorShape;
 
 			if (selectedActor->GetShape() == SPHERE) {
@@ -397,6 +410,10 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			attachedOtherIndex = Physebs::Clamp<int>(attachedOtherIndex, m_scene->GetObjects().size() - 1, 0);		// Ensure selected actor doesn't overflow
 
 			Rigidbody* selectedOther = m_scene->GetObjects()[attachedOtherIndex];
+
+			/// Indicate selection via low-poly sphere at selected actor position
+			aie::Gizmos::addSphere(selectedOther->GetPos(), DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.y, DEFAULT_OTHER_SELECTION_COLOR);
+
 			std::string otherShape;
 
 			if (selectedOther->GetShape() == SPHERE) {
@@ -469,6 +486,12 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			ImGui::Text("CONSTRAINT #%i", selectedConstraintIndex + 1);
 
 			Constraint* currentConstraint = m_scene->GetConstraints()[selectedConstraintIndex];
+
+			/// Create selection spheres at the position of each attached Rigidbody
+			aie::Gizmos::addSphere(currentConstraint->GetAttachedActor()->GetPos(), 
+				DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.x, DEFAULT_CONSTRAINT_SELECTION_COLOR);
+			aie::Gizmos::addSphere(currentConstraint->GetAttachedOther()->GetPos(),
+				DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.x, DEFAULT_CONSTRAINT_SELECTION_COLOR);
 
 			// Display editable properties of selected constraint
 			/// Universal
