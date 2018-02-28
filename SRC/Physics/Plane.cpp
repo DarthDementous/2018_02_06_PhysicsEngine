@@ -40,3 +40,24 @@ void Plane::Draw()
 	aie::Gizmos::addTri(v1, v2, v3, m_color);
 	aie::Gizmos::addTri(v4, v2, v1, m_color);
 }
+
+void Plane::Update(float a_dt)
+{
+	// Static rigidbodies do not move
+	if (b_dynamic) {
+		// Apply dampening (negative velocity scaled by friction)
+		ApplyForce(-m_vel * m_frict);
+
+		// Calculate velocity
+		m_vel += m_accel * a_dt;
+
+		// Truncate velocity with an epsilon
+		if (glm::length(m_vel) < EPSILON) {
+			// Zero out velocity to avoid floating point errors
+			m_vel = glm::vec3();
+		}
+
+		// Calculate distance from origin
+		m_pos += m_vel * a_dt;
+	}
+}

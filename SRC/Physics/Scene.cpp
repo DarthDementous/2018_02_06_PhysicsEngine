@@ -525,7 +525,7 @@ void Scene::ResolveCollisions() {
 			/// DYNAMIC ACTOR, STATIC OTHER
 			if (coll.actor->GetIsDynamic() && !(coll.other->GetIsDynamic())) {
 				// Account for overlap for actor
-				coll.actor->SetPos(coll.actor->GetPos() + overlapAccountVec);
+				coll.actor->SetPos(coll.actor->GetPos() + (-overlapAccountVec));		// Modifying actor, make overlap vec negative
 
 				ApplyKnockback_Static(coll);
 			}

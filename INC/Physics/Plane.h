@@ -15,6 +15,9 @@ namespace Physebs {
 
 		virtual void Draw();
 
+		// Override update to ensure acceleration is applied to distance from origin instead of position
+		virtual void Update(float a_dt);
+
 		float*				GetDistRef()							{ return &m_originDist; }
 		float				GetDist() const							{ return m_originDist; }
 		void				SetDist(float a_dist)					{ m_originDist = a_dist; }
