@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Physics/Constraint.h"
-#include "PhysebsUtility.h"
 
 namespace Physebs {
 	class Spring : public Constraint {

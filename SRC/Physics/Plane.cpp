@@ -57,7 +57,19 @@ void Plane::Update(float a_dt)
 			m_vel = glm::vec3();
 		}
 
-		// Calculate distance from origin
-		m_pos += m_vel * a_dt;
+		/// Calculate distance from origin
+		// Dot-product velocity vector with normal to determine whether velocity its positive or negative
+		float	velDotCheck = glm::dot(m_normal, m_vel * a_dt);
+		bool	b_negVel	= (velDotCheck < 0) ? true : false;
+		float	velLength	= glm::length(velDotCheck);
+
+		// Convert velocity into single float and negate if velocity is negative to plane normal
+		m_originDist += (b_negVel) ? -velLength : velLength;
+
+		/// Calculate position
+		m_pos = m_normal * m_originDist;
 	}
+
+	// Reset acceleration so it gets re-calculated (regardless of static or dynamic)
+	m_accel = glm::vec3();
 }

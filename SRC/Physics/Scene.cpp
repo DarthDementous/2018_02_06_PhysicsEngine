@@ -4,17 +4,34 @@
 #include "Physics\Plane.h"
 #include "Physics\AABB.h"
 #include "Physics\Constraint.h"
+#include "SimpleOctree\Octree.h"
+#include "SimpleOctree\Vec3.h"
+#include "Octree\Octree.h"
 #include <glm/ext.hpp>
 #include <assert.h>
-#include <Gizmos.h>
 #include <algorithm>
+#include <random>
 using namespace Physebs;
 
-Scene::Scene(const glm::vec3 & a_gravityForce, const glm::vec3& a_globalForce) : m_gravity(a_gravityForce), m_globalForce(a_globalForce)
+Scene::Scene(const glm::vec3 & a_gravityForce, const glm::vec3& a_globalForce, 
+	const glm::vec3& a_simulationOrigin, const glm::vec3& a_simulationHalfExtents) 
+	: 
+	m_gravity(a_gravityForce), m_globalForce(a_globalForce),
+	m_simulationOrigin(a_simulationOrigin), m_simulationHalfExtents(a_simulationHalfExtents)
 {
 	// Defaults for 100fps
 	m_fixedTimeStep		= 0.01f;		// One-hundreth of a second
 	m_accumulatedTime	= 0.f;
+
+	// Initialise spatial partition tree from given simulation origin and extents
+	float simulationMin[3]	= { a_simulationOrigin.x - a_simulationHalfExtents.x, a_simulationOrigin.y - a_simulationHalfExtents.y, a_simulationOrigin.z - a_simulationHalfExtents.z };
+	float simulationMax[3]	= { a_simulationOrigin.x + a_simulationHalfExtents.x, a_simulationOrigin.y + a_simulationHalfExtents.y, a_simulationOrigin.z + a_simulationHalfExtents.z };
+	float minCellSize[3]	= MIN_VOLUME_SIZE;
+
+	m_spatialPartitionTree = new Octree<PartitionNode>(simulationMin, simulationMax, minCellSize);
+
+//	m_spatialPartitionTree = new Octree(Vec3(m_simulationOrigin.x, m_simulationOrigin.y, m_simulationOrigin.z), 
+//		Vec3(m_simulationHalfExtents.x, m_simulationHalfExtents.y, m_simulationHalfExtents.z));
 }
 
 Scene::~Scene()
@@ -28,6 +45,9 @@ Scene::~Scene()
 	for (auto constraint : m_constraints) {
 		delete constraint;
 	}
+
+	// Free memory held by partition tree
+	delete m_spatialPartitionTree;
 }
 
 /**
@@ -60,7 +80,13 @@ void Scene::Update() {
 	}
 
 	// Detect and resolve collisions after calculating object movement
-	DetectCollisions();
+#if B_PARTITION_COLLISIONS	Octree optimisation, checks only objects in a given volume
+	PartitionCollisions();
+#else O(n^2) complexity, checks every single object in scene against every other object
+	
+	DetectCollisions(m_objects);
+#endif
+
 	ResolveCollisions();
 }
 
@@ -75,6 +101,17 @@ void Scene::Draw()
 	for (auto constraint : m_constraints) {
 		constraint->Draw();
 	}
+
+	// Draw AABB Gizmos to represent partition volumes
+#if B_SHOW_PARTITIONS
+	OctreeCallbackDebug ocd;
+
+	m_spatialPartitionTree->traverse(&ocd);
+
+	// Clear partition tree to be rebuilt and drawn again
+	//m_spatialPartitionTree->clear();
+	
+#endif
 }
 
 /**
@@ -136,6 +173,50 @@ void Scene::ApplyGlobalForce()
 	for (auto obj : m_objects) {
 		obj->ApplyForce(m_globalForce);
 	}
+}
+
+/**
+*	@brief Use all object positions to build octree with collision volumes within the simulation boundaries and segment collision detection between those volumes for 400% more efficiency.
+*	NOTE: If an object is outside of the simulation boundaries it will be removed AND deleted.
+*	detect collisions between each set of objects in their respective collision volumes.
+*/
+void Scene::PartitionCollisions()
+{
+	// Refresh volumes in tree to account for change in object positions
+	m_spatialPartitionTree->clear();
+
+	// Calculate volumes to encompass object positions and add corresponding object pointers to 'segment' the scene
+	for (auto currentObj : m_objects) {
+		const float objPos[3] = { currentObj->GetPos().x, currentObj->GetPos().y, currentObj->GetPos().z };
+
+		// Object is outside of simulation extents, remove it from scene as well as delete it, and continue to next one to avoid accessing deleted memory
+		if (!AABB::PointInMinMax(objPos, m_spatialPartitionTree->GetMin(), m_spatialPartitionTree->GetMax())) {
+
+			RemoveObject(currentObj);
+			delete currentObj;
+
+			continue;
+		}
+
+		else {
+			// Get node in the volume that contains object position and add object to node
+			PartitionNode& n = m_spatialPartitionTree->getCell(objPos);
+			n.containedObjects.push_back(currentObj);
+
+			// Add scene pointer to node so detect collisions function can be called later
+			n.scene = this;
+
+#if B_VOLUME_COLORS Change object colors to reflect what volume they are in
+			// Assign object to volume color
+			currentObj->SetColor(n.debugColor);
+#endif
+		}
+
+	}
+
+	// Traverse created volumes and use callback class to detect collisions only with objects contained in the volume
+	OctreeCallbackDetectCollisions collBack;		// Puns are great, shhh
+	m_spatialPartitionTree->traverse(&collBack);
 }
 
 /**
@@ -434,16 +515,17 @@ void Scene::ApplyGravity()
 }
 
 /**
-*	@brief Check every object against every other object and record collisions for this frame.
+*	@brief From a list of objects, check every object against every other object and record collisions for this frame.
+*	@param a_objects is the list of objects to check collisions in.
 *	@return void.
 */
-void Scene::DetectCollisions()
+void Scene::DetectCollisions(const std::vector<Rigidbody*>& a_objects)
 {
 	// Loop through all objects and check all actor objects against all other objects
-	for (auto actor_iter = m_objects.begin(); actor_iter != m_objects.end(); ++actor_iter) {
+	for (auto actor_iter = a_objects.begin(); actor_iter != a_objects.end(); ++actor_iter) {
 		
 		// Second for loop is shifted one to the right in order to access the 'others'
-		for (auto other_iter = actor_iter + 1; other_iter != m_objects.end(); ++other_iter) {
+		for (auto other_iter = actor_iter + 1; other_iter != a_objects.end(); ++other_iter) {
 			Rigidbody* actor = *actor_iter;
 			Rigidbody* other = *other_iter;
 			

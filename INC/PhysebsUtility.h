@@ -1,5 +1,9 @@
 #pragma once
 
+#define B_SHOW_PARTITIONS 1			// Whether or not to show AABBs for each volume in the partition tree
+#define B_PARTITION_COLLISIONS 1	// Whether to use octal space partitioning optimisation for collisions
+#define B_VOLUME_COLORS 1			// Whether to set object colors to the volume they are contained in
+
 // The limit point before a value will be zeroed
 #define EPSILON 0.001f
 
@@ -10,6 +14,9 @@
 #define DEFAULT_SPHERE glm::ivec2(16, 16)
 #define DEFAULT_AABB glm::vec3(4, 4, 4)
 #define DEFAULT_PLANE_NORMAL glm::vec3(0, 1, 0)
+#define DEFAULT_SIMULATION_HALFEXTENTS glm::vec3(50, 50, 50)
+
+#define MIN_VOLUME_SIZE { 20, 20, 20}
 
 #define DEFAULT_COLOR glm::vec4(0, 0, 0, 1)
 #define DEFAULT_CONSTRAINT_COLOR glm::vec4(1, 1, 0, 1)

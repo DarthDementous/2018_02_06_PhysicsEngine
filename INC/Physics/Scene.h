@@ -2,7 +2,15 @@
 
 #include <vector>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 #include "PhysebsUtility.h"
+#include "Octree\Octree.h"
+#include <Gizmos.h>
+#include <iostream>
+
+namespace brandonpelfrey {
+	class Octree;
+}
 
 namespace Physebs {
 	class Rigidbody;
@@ -44,8 +52,8 @@ namespace Physebs {
 	*/
 	class Scene {
 	public:
-		Scene(const glm::vec3& a_gravityForce = glm::vec3(0, DEFAULT_GRAVITY, 0), // Default gravity force pushes down
-			const glm::vec3& a_globalForce = glm::vec3());
+		Scene(const glm::vec3& a_gravityForce = glm::vec3(0, DEFAULT_GRAVITY, 0), const glm::vec3& a_globalForce = glm::vec3(),	 // Default gravity force pushes down
+			const glm::vec3& a_simulationOrigin = glm::vec3(), const glm::vec3& a_simulationHalfExtents = DEFAULT_SIMULATION_HALFEXTENTS);
 		~Scene();
 
 		void FixedUpdate(float a_dt);
@@ -58,6 +66,8 @@ namespace Physebs {
 		void RemoveConstraint(Constraint* a_constraint);
 
 		void ApplyGlobalForce();
+
+		void PartitionCollisions();
 
 		static bool IsColliding_Sphere_Sphere(Collision& a_collision);
 		static bool IsColliding_Sphere_Plane(Collision& a_collision);
@@ -82,19 +92,84 @@ namespace Physebs {
 		glm::vec3 m_gravity;
 		glm::vec3 m_globalForce;				// Force that will affect all objects
 
-		std::vector<Rigidbody*> m_objects;
-		std::vector<Constraint*> m_constraints;	// Hold onto all constraints between objects
-		std::vector<Collision>	m_collisions;	// Hold onto all collisions that have occured in the frame for collision resolution
+		std::vector<Rigidbody*>		m_objects;
+		std::vector<Constraint*>	m_constraints;	// Hold onto all constraints between objects
+		std::vector<Collision>		m_collisions;	// Hold onto all collisions that have occured in the frame for collision resolution
+
+		// Optimization
+		//brandonpelfrey::Octree*		m_spatialPartitionTree = nullptr;	// Simple octree library implementation for segmenting collision detections into AABBs
+	protected:
+		glm::vec3						m_simulationOrigin;							// Origin point of initial collision detection AABB
+		glm::vec3						m_simulationHalfExtents;					// Half extents of initial collision detection AABB  
 
 		// Fixed Update variables
-		float m_fixedTimeStep;				// The fixed time between updates of the scene
-		float m_accumulatedTime;			// How much time overflow there is between fixed updates
+		float m_fixedTimeStep;														// The fixed time between updates of the scene
+		float m_accumulatedTime;													// How much time overflow there is between fixed updates
 	private:
-		void Update();						// Update functionality with fixed time step
-		void ApplyGravity();				// Only want scene to be able to apply gravity to keep consistency
-		void DetectCollisions();			// Object collisions are only handled within the scene
-		void ResolveCollisions();			// Apply appropriate forces to objects that have collided
+		void Update();																// Update functionality with fixed time step
+		void ApplyGravity();														// Only want scene to be able to apply gravity to keep consistency
+		void DetectCollisions(const std::vector<Rigidbody*>& a_objects);			// Object collisions are only handled within the scene
+		void ResolveCollisions();													// Apply appropriate forces to objects that have collided
 		void ApplyKnockback_Dynamic(Collision& a_collision);
 		void ApplyKnockback_Static(Collision& a_collision);
+
+#pragma region Spatial Partitioning
+		/**
+		*	@brief Structure for holding onto objects in a partition volume within an octree.
+		*/
+		struct PartitionNode {
+
+			PartitionNode() {
+				
+				// Generate random color for volume
+				//debugColor = glm::vec4((rand() % 255) / 255.f, (rand() % 255) / 255.f, (rand() % 255) / 255.f, 1.f);	 // Generate random numbers between 0-255 and then divide by 255 to get RGB float values
+				debugColor = glm::vec4(1, 0, 0, 0.25f);
+			}
+
+			Scene*					scene = nullptr;						// What scene contained objects are apart of
+			glm::vec4				debugColor = glm::vec4();				// What color to draw contained objects in. All values set to 0 by default.
+			std::vector<Rigidbody*> containedObjects;						// List of pointers to object that are inside the partition volume
+		};
+
+		Octree<PartitionNode>*	m_spatialPartitionTree = nullptr;
+
+		/**
+		*	@brief Inherited callback class used for detecting collisions with contained objects in a partition volume in an octree.
+		*/
+		class OctreeCallbackDetectCollisions : public Octree<PartitionNode>::Callback {
+
+			virtual bool operator()(const float min[3], const float max[3], PartitionNode& nodeData) {
+				// Call detect collisions in the scene with the contained objects in the volume
+				nodeData.scene->DetectCollisions(nodeData.containedObjects);
+
+				// Continue to detect collisions in the rest of the octree volumes
+				return true;
+			}
+		};
+
+		/**
+		*	@brief Inherited callback class used for drawing an AABB for each partition volume in octree.
+		**/
+		class OctreeCallbackDebug : public Octree<PartitionNode>::Callback {
+
+		public:
+			// Override callback operator called for every octree node. NOTE: If function returns false, traversal will be broken early
+			virtual bool operator()(const float min[3], const float max[3], PartitionNode& nodeData) {
+				// Calculate extents and pos to draw AABB representative of current octree volume
+				glm::vec3 currentMin = glm::vec3(min[0], min[1], min[2]);
+				glm::vec3 currentMax = glm::vec3(max[0], max[1], max[2]);
+
+				glm::vec3 pos = (currentMin + currentMax) / 2.f;
+				glm::vec3 halfExtents = (currentMax - currentMin) / 2.f;
+
+				aie::Gizmos::addAABB(pos, halfExtents, nodeData.debugColor);
+
+				// Make AABBs for the rest of the octree volumes
+				return true;
+			}
+		};
+#pragma endregion
+
+	
 	};
 }
