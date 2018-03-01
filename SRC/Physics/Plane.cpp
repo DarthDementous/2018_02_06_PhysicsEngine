@@ -26,7 +26,7 @@ Plane::~Plane()
 void Plane::Draw()
 {
 	// 1. Find center position of plane using normal and distance
-	glm::vec3 planePos = m_pos;
+	glm::vec3 planePos = m_normal * m_originDist;
 	// 2. Find direction of the plane lines (what is physically drawn) by finding vector perpendicular to the normal (cross-product with arbitrary vector)
 	glm::vec3 arbitraryVec	= m_normal + 1.f;		// Slightly off-centered vector ensures its never parallel (cross-product returns 0, 0, 0);
 	glm::vec3 planeLineDir	= glm::normalize(glm::cross(m_normal, arbitraryVec));

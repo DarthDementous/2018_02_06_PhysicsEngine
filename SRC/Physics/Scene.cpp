@@ -149,23 +149,23 @@ bool Scene::IsColliding_Sphere_Sphere(Collision& a_collision)
 	assert(a_collision.actor->GetShape() == SPHERE && "IsColliding_Sphere_Sphere collision actor is not a sphere.");
 	Sphere* actorSphere = static_cast<Sphere*>(a_collision.actor);
 
-	assert(a_collision.other->GetShape() == SPHERE && "IsColliding_Sphere_Sphere collision other is not a sphere.");
-	Sphere* otherSphere = static_cast<Sphere*>(a_collision.other);
+assert(a_collision.other->GetShape() == SPHERE && "IsColliding_Sphere_Sphere collision other is not a sphere.");
+Sphere* otherSphere = static_cast<Sphere*>(a_collision.other);
 
-	// Distance between origins is less than radii of the spheres, they have collided
-	glm::vec3 collVec = otherSphere->GetPos() - actorSphere->GetPos();
-	float dist = glm::length(collVec);
+// Distance between origins is less than radii of the spheres, they have collided
+glm::vec3 collVec = otherSphere->GetPos() - actorSphere->GetPos();
+float dist = glm::length(collVec);
 
-	if (dist < actorSphere->GetRadius() + otherSphere->GetRadius()) {
-		a_collision.overlap			= (actorSphere->GetRadius() + otherSphere ->GetRadius()) - dist; //  (Radii - distance) NOT (distance - radii) or there will be negative cases
-		a_collision.collisionNormal = (dist != 0) ? glm::normalize(collVec) : collVec;	// Normalize collision vector if length is not 0
+if (dist < actorSphere->GetRadius() + otherSphere->GetRadius()) {
+	a_collision.overlap = (actorSphere->GetRadius() + otherSphere->GetRadius()) - dist; //  (Radii - distance) NOT (distance - radii) or there will be negative cases
+	a_collision.collisionNormal = (dist != 0) ? glm::normalize(collVec) : collVec;	// Normalize collision vector if length is not 0
 
-		return true;
-	}
-	
+	return true;
+}
 
-	// No overlapping detected
-	return false;
+
+// No overlapping detected
+return false;
 }
 
 /**
@@ -206,21 +206,28 @@ bool Scene::IsColliding_Sphere_AABB(Collision & a_collision)
 */
 bool Scene::IsColliding_Plane_Sphere(Collision& a_collision) {
 	assert(a_collision.actor->GetShape() == PLANE && "IsColliding_Plane_Sphere collision actor is not a plane.");
-	Plane*	actorPlane	= static_cast<Plane*>(a_collision.actor);
+	Plane*	actorPlane = static_cast<Plane*>(a_collision.actor);
 
 	assert(a_collision.other->GetShape() == SPHERE && "IsColliding_Plane_Sphere collision other is not a sphere.");
 	Sphere*	otherSphere = static_cast<Sphere*>(a_collision.other);
 
 	/// Assume everything is at the origin so positions can also be vectors
+	// Determine plane normal by dot-producting with sphere position to work out what side of the plane the sphere is on [positive = normal side, negative = other side]
+	float	planeSideCheck	= glm::dot(actorPlane->GetNormal(), otherSphere->GetPos()) - actorPlane->GetDist();	// Account for offset from origin
+	bool	b_otherSide		= planeSideCheck < 0 ? true : false;
+
+	glm::vec3	planeNormal	= !b_otherSide ? actorPlane->GetNormal() : -actorPlane->GetNormal();
+	float		planeDist = !b_otherSide ? actorPlane->GetDist() : -actorPlane->GetDist();						// If on other side, distance from origin is negated to account for change in normal.
+		
 	// 1. Dot-product plane normal with sphere position (aka vector from origin to sphere position) = distance between sphere position and plane
-	float sphereDist = glm::dot(actorPlane->GetNormal(), otherSphere->GetPos());
+	float sphereDist = glm::dot(planeNormal, otherSphere->GetPos());
 	// 2. Get final distance by minusing plane distance from sphere distance to account for plane not being at the origin
-	float finalDist = sphereDist - actorPlane->GetDist();
+	float finalDist = sphereDist - planeDist;
 
 	// 4. Check if final distance is less than the radius of the sphere
 	if (finalDist < otherSphere->GetRadius()) {
-		a_collision.overlap				= otherSphere->GetRadius() - finalDist;		// How much objects have intersected taking sphere radius into account
-		a_collision.collisionNormal		= actorPlane->GetNormal();
+		a_collision.overlap = otherSphere->GetRadius() - finalDist;		// How much objects have intersected taking sphere radius into account
+		a_collision.collisionNormal = planeNormal;
 
 		return true;
 	}
@@ -243,16 +250,42 @@ bool Scene::IsColliding_Plane_AABB(Collision& a_collision) {
 	AABB*	otherAABB = static_cast<AABB*>(a_collision.other);
 
 	/// Assume everything is at the origin so positions can also be vectors
-	// 1. Dot-product plane normal with AABB min (aka vector from origin to AABB min) = distance between AABB and plane
-	float AABBDist = glm::dot(actorPlane->GetNormal(), otherAABB->CalculateMin());
-	// 2. Because assuming objects are at origin, minus with plane distance from origin for accurate distance calculation
-	AABBDist -= actorPlane->GetDist();
+	// Determine plane normal by dot-producting with AABB position to work out what side of the plane the AABB is on [positive = normal side, negative = other side]
+	float	planeSideCheck	= glm::dot(actorPlane->GetNormal(), otherAABB->GetPos()) - actorPlane->GetDist();	// Account for offset from origin
+	bool	b_otherSide		= planeSideCheck < 0 ? true : false;
 
-	// 2. If distance is 0 or negative then AABB is colliding
-	if (AABBDist <= 0) {
-		// Distance is calculated from edge so it can be used as overlap. Abs because overlap is never negative
-		a_collision.overlap = abs(AABBDist);		
-		a_collision.collisionNormal = actorPlane->GetNormal();
+	glm::vec3 planeNormal	= !b_otherSide ? actorPlane->GetNormal() : -actorPlane->GetNormal();
+	float planeDist			= !b_otherSide ? actorPlane->GetDist() : -actorPlane->GetDist();		// If on other side, distance from origin is negated to account for change in normal.
+
+	// Loop through all AABB corners and:
+	// - Find closest corner to plane distance
+	auto		corners				= otherAABB->CalculateCorners();
+	float		closestCornerDist	= glm::dot(planeNormal, corners[0]) - planeDist;	 // Set to distance from first corner
+
+	for (int i = 0; i < corners.size(); ++i) {
+		
+		// 1. Dot-product plane normal with AABB corner (aka vector from origin to AABB corner) = distance between AABB and plane
+		float AABBDist = glm::dot(planeNormal, corners[i]);
+
+		// 2. Because assuming objects are at origin, minus with plane distance from origin for accurate distance calculation.
+		AABBDist -= planeDist;
+
+		// 3. Check if found new minimum distance and set new closest corner
+		if (AABBDist < closestCornerDist) {
+
+			closestCornerDist	= AABBDist;
+		}
+
+	}
+
+	// 4. Check if distance between closest corner distance indicates intersection with plane (negative or 0 because plane has no thickness)
+	if (closestCornerDist <= 0) {
+
+		// Overlap is the straight distance between plane and closest corner (abs because overlap can never be negative)
+		a_collision.overlap = abs(closestCornerDist);
+
+		// Collision normal determined by what side of the plane AABB is on
+		a_collision.collisionNormal = planeNormal;
 
 		return true;
 	}

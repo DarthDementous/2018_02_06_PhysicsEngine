@@ -48,6 +48,10 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	m_scene = new Scene();
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
 	
+	m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 10, 0), 10.f));
+	m_scene->AddObject(new Plane(glm::vec3(0, -1, 0), -5));
+	//m_scene->AddObject(new AABB(DEFAULT_AABB, glm::vec3(0, 10, 0)));
+
 #if 0
 #pragma region Manual Object Creation
 	/// Create 2D grid of spheres

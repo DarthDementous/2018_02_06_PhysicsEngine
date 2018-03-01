@@ -8,7 +8,7 @@ namespace Physebs {
 	public:
 		Plane(const glm::vec3& a_normal = DEFAULT_PLANE_NORMAL, float a_originDist = 0,
 			const glm::vec3& a_pos = glm::vec3(), float a_mass = DEFAULT_MASS, float a_frict = DEFAULT_FRICTION,
-			bool a_dynamic = false, const glm::vec4& a_color = glm::vec4()		// Make planes static by default
+			bool a_dynamic = false, const glm::vec4& a_color = DEFAULT_COLOR		// Make planes static by default
 		);
 
 		virtual ~Plane();

@@ -45,3 +45,39 @@ glm::vec3 AABB::CalculateMax() const
 
 	return m_pos + halfExtents;
 }
+
+/**
+*	@brief Using half extents and position, calculate vector of 8 corner positions.
+*	@return Vector of AABB corners (vec3s)
+*/
+std::vector<glm::vec3> AABB::CalculateCorners() const
+{
+	glm::vec3 halfExtents = m_extents / 2.f;
+	std::vector<glm::vec3> corners;
+
+	// Back top left corner
+	corners.push_back(glm::vec3(m_pos.x - halfExtents.x, m_pos.y + halfExtents.y, m_pos.z - halfExtents.z));
+
+	// Back top right corner
+	corners.push_back(glm::vec3(m_pos.x + halfExtents.x, m_pos.y + halfExtents.y, m_pos.z - halfExtents.z));
+
+	// Forward top left corner
+	corners.push_back(glm::vec3(m_pos.x - halfExtents.x, m_pos.y + halfExtents.y, m_pos.z + halfExtents.z));
+
+	// Forward top right corner
+	corners.push_back(glm::vec3(m_pos.x + halfExtents.x, m_pos.y + halfExtents.y, m_pos.z + halfExtents.z));
+
+	// Back bottom left corner
+	corners.push_back(glm::vec3(m_pos.x - halfExtents.x, m_pos.y - halfExtents.y, m_pos.z - halfExtents.z));
+
+	// Back bottom right corner
+	corners.push_back(glm::vec3(m_pos.x + halfExtents.x, m_pos.y - halfExtents.y, m_pos.z - halfExtents.z));
+
+	// Forward bottom left corner
+	corners.push_back(glm::vec3(m_pos.x - halfExtents.x, m_pos.y - halfExtents.y, m_pos.z + halfExtents.z));
+
+	// Forward bottom right corner
+	corners.push_back(glm::vec3(m_pos.x + halfExtents.x, m_pos.y - halfExtents.y, m_pos.z + halfExtents.z));
+
+	return corners;
+}

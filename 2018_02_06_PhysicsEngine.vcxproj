@@ -188,6 +188,9 @@
     <ClInclude Include="INC\Physics\Spring.h" />
     <ClInclude Include="_2018_02_06_PhysicsEngineApp.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram1.cd" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
