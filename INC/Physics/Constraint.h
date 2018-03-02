@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glm/vec4.hpp>
-#include "PhysebsUtility.h"
+#include "PhysebsUtility_Literals.h"
 
 namespace Physebs {
 	enum eConstraint { SPRING, JOINT };

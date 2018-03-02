@@ -2,7 +2,7 @@
 
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
-#include "PhysebsUtility.h"
+#include "PhysebsUtility_Literals.h"
 
 /**
 *	@brief Pure virtual class for objects affected by physics.

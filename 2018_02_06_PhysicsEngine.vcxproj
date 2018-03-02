@@ -205,7 +205,8 @@
     <ClInclude Include="INC\pcl\octree\octree_pointcloud_singlepoint.h" />
     <ClInclude Include="INC\pcl\octree\octree_pointcloud_voxelcentroid.h" />
     <ClInclude Include="INC\pcl\octree\octree_search.h" />
-    <ClInclude Include="INC\PhysebsUtility.h" />
+    <ClInclude Include="INC\PhysebsUtility_Literals.h" />
+    <ClInclude Include="INC\PhysebsUtility_Funcs.h" />
     <ClInclude Include="INC\Physics\AABB.h" />
     <ClInclude Include="INC\Physics\Constraint.h" />
     <ClInclude Include="INC\Physics\Plane.h" />

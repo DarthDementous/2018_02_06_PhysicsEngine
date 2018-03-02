@@ -453,49 +453,30 @@ bool Scene::IsColliding_AABB_AABB(Collision & a_collision)
 		actorMin.z < otherMax.z && actorMax.z > otherMin.z)
 	{
 		
-
-#if 1
 		/// THIS METHOD WORKS FOR ANY KIND OF COLLISION SCENARIO
-		// Calculate overlap between AABBs by finding distance between closest point on actor and closest point on other.
-		// Closest point is found by clamping opposite AABB position by AABB's min and max
-		glm::vec3 actorClosestPoint = glm::clamp(otherAABB->GetPos(), actorMin, actorMax);
-		glm::vec3 otherClosestPoint = glm::clamp(actorAABB->GetPos(), otherMin, otherMax);
-		glm::vec3 overlapVec		= otherClosestPoint - actorClosestPoint;
+		// Calculate overlap between AABBs by minusing distance between AABBs from the total overlap volume
+		// B - A to get vector between objects for consistency
+		glm::vec3 betweenVec			= glm::abs(otherAABB->GetPos() - actorAABB->GetPos());
+		glm::vec3 totalOverlapVolume	= (actorAABB->GetExtents() + otherAABB->GetExtents()) / 2.f;		// Use combined half-extents to get AABB 'radii'
+		glm::vec3 overlapVec			= totalOverlapVolume - betweenVec;									
 
-		a_collision.overlap = glm::length(overlapVec);
-		
-		//// B - A to get collision vector for consistency
-		glm::vec3 collVec = otherAABB->GetPos() - actorAABB->GetPos();
+		// Get collision normal by basing it off the smallest axis of overlap
+		float smallestAxis		= std::min((std::min(overlapVec.x, overlapVec.y)), overlapVec.z);
+		glm::vec3 collNormal	= glm::vec3();
 
-		// Get collision normal by reflecting velocity
-		//glm::vec3 collVec				= -otherAABB->GetVel();
+		if (smallestAxis == overlapVec.x) {
+			collNormal = overlapVec.x < 0 ? glm::vec3(-1, 0, 0) : glm::vec3(1, 0, 0);
+		}
+		if (smallestAxis == overlapVec.y) {
+			collNormal = overlapVec.y < 0 ? glm::vec3(0, -1, 0) : glm::vec3(0, 1, 0);
+		}
+		if (smallestAxis == overlapVec.z) {
+			collNormal = overlapVec.z < 0 ? glm::vec3(0, 0, -1) : glm::vec3(0, 0, 1);
+		}
 
-		a_collision.collisionNormal		= glm::length(collVec) != 0 ? glm::normalize(collVec) : collVec;	// Normalize collision vector if length is not 0#else 
+		a_collision.collisionNormal = collNormal;
+		a_collision.overlap			= smallestAxis;															// Base off the smallest overlap axis
 
-#else
-		/// THIS METHOD IS ONLY ACCURATE IF ACTOR IS ON THE LEFT AND OTHER IS ON THE RIGHT
-		// Calculate overlap between AABBs on each axis by using actor max and other min. 
-		//NOTE: Use abs so direction of created vector doesn't matter and ensure that overlap is never negative.
-		float xOverlap = abs((actorMax - otherMin).x);
-		float yOverlap = abs((actorMax - otherMin).y);
-		float zOverlap = abs((actorMax - otherMin).z);
-
-		glm::vec3 overlapVec(xOverlap, yOverlap, zOverlap);
-
-		/*	Convert overlap vector into a total overlap by dot-producting with collision normal to ensure overlap is applied based off 
-			the direction of the collision.
-
-				E.g. if an AABB needs to move (0.1, 5, 7) to no longer be overlapping and one object approaches from the top 
-				(0, 1, 0) then
-					totalOverlap = (0.1, 5, 7) . (0, 1, 0)
-					totalOverlap = (0.1 * 0 + 5 * 1 + 7 * 0)
-					totalOverlap = 5
-
-				Therefore both objects will be moved back 2.5 units along the collision normal to stop them from overlapping
-				because the direction of collision dictates that only the y axis overlap should be considered.
-		*/
-		a_collision.overlap = abs(glm::dot(overlapVec, a_collision.collisionNormal));	// Abs because overlap must never be negative
-#endif
 		return true;
 	}
 
@@ -654,7 +635,7 @@ void Scene::ResolveCollisions() {
 			/// DYNAMIC ACTOR, DYNAMIC OTHER
 			if (coll.actor->GetIsDynamic() && coll.other->GetIsDynamic()) {
 				// Account for overlap for actor and other (actor is negative because collisionNormal created from B - A)
-				coll.actor->SetPos(coll.actor->GetPos() + -overlapAccountVec);
+				coll.actor->SetPos(coll.actor->GetPos() + (-overlapAccountVec));
 				coll.other->SetPos(coll.other->GetPos() + overlapAccountVec);
 
 				ApplyKnockback_Dynamic(coll);
