@@ -6,8 +6,11 @@
 // The limit point before a value will be zeroed
 #define EPSILON 0.001f
 
+#define DEFAULT_TIME_STEP 0.01f			// Frame = one hundredth of a second/100fps
+
 #define DEFAULT_MASS 2.f
-#define DEFAULT_FRICTION 8.f
+#define DEFAULT_FRICTION 1.f
+#define DEFAULT_RESTITUTION 0.5f
 #define DEFAULT_GRAVITY -9.8f
 
 #define DEFAULT_SPHERE glm::ivec2(16, 16)

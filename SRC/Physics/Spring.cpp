@@ -9,10 +9,10 @@ using namespace Physebs;
 Spring::Spring
 (
 	Rigidbody* a_attachedActor, Rigidbody* a_attachedOther, const glm::vec4& a_color,
-	float a_springiness, float a_restLength
+	float a_springiness, float a_restLength, float a_springDampening
 ) :
 	Constraint(a_attachedActor, a_attachedOther, a_color),
-	m_springiness(a_springiness), m_restLength(a_restLength)
+	m_springiness(a_springiness), m_restLength(a_restLength), m_springDampening(a_springDampening)
 {
 	m_type = SPRING;
 }
@@ -28,8 +28,8 @@ Spring::~Spring()
 void Spring::Constrain()
 {
 	// 1. Get difference between target length and current distance between attached rigidbodies
-	glm::vec3	springVec = m_attachedOther->GetPos() - m_attachedActor->GetPos();
-	float		currentDisplacement = m_restLength - glm::length(springVec);
+	glm::vec3	springVec			 = m_attachedOther->GetPos() - m_attachedActor->GetPos();
+	float		currentDisplacement	 = m_restLength - glm::length(springVec);
 
 	// 2. Calculate relative velocity depending on type of Rigidbody actor and other are
 	glm::vec3 relativeVel = glm::vec3();
@@ -57,7 +57,9 @@ void Spring::Constrain()
 
 	// 4. Calculate final force to impart on attached Rigidbodies this function call with Hooke's law
 	// NOTE: If constrain condition is not met (not at resting length) then only dampening will be applied.
-	glm::vec3 finalSpringForce	= springVec * retractScale;		// Apply force along spring
+	glm::vec3 dampening			= m_springDampening * relativeVel;
+	
+	glm::vec3 finalSpringForce	= springVec * retractScale - dampening;		// Apply force along spring
 
 	// Only apply force to dynamic Rigidbodies
 	if (m_attachedActor->GetIsDynamic()) {

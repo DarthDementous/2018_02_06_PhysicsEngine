@@ -86,6 +86,7 @@ namespace Physebs {
 		void				SetGlobalForce(const glm::vec3& a_force)	{ m_globalForce = a_force; }
 
 		bool*				GetIsPartitionedRef()						{ return &b_partitionCollisions; }
+		float*				GetTimeStepRef()							{ return &m_fixedTimeStep; }
 	protected:
 		glm::vec3 m_gravity;
 		glm::vec3 m_globalForce;					// Force that will affect all objects
@@ -135,11 +136,18 @@ namespace Physebs {
 		class OctreeCallbackDetectCollisions : public Octree<PartitionNode>::Callback {
 
 			virtual bool operator()(const float min[3], const float max[3], PartitionNode& nodeData) {
+				// Only detect collisions in a volume with an initialised scene
+				if (nodeData.scene == nullptr) {
+					// Volume scene is null but there might be other volumes that are initialised
+					return true;
+				}
+
 				// Call detect collisions in the scene with the contained objects in the volume
 				nodeData.scene->DetectCollisions(nodeData.containedObjects);
 
 				// Continue to detect collisions in the rest of the octree volumes
 				return true;
+
 			}
 		};
 

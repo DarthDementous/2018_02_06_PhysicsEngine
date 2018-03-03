@@ -9,7 +9,7 @@ namespace Physebs {
 		Sphere(
 			float a_radius = DEFAULT_MASS, const glm::vec2& a_dimensions = DEFAULT_SPHERE,
 			const glm::vec3& a_pos = glm::vec3(), float a_mass = DEFAULT_MASS, float a_frict = DEFAULT_FRICTION, 
-			bool a_dynamic = true, const glm::vec4& a_color = DEFAULT_COLOR
+			bool a_dynamic = true, const glm::vec4& a_color = DEFAULT_COLOR, float a_restitution = DEFAULT_RESTITUTION
 		);
 		
 		virtual ~Sphere();

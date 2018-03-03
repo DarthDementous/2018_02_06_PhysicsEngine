@@ -4,8 +4,6 @@
 #include "Physics\Plane.h"
 #include "Physics\AABB.h"
 #include "Physics\Constraint.h"
-#include "SimpleOctree\Octree.h"
-#include "SimpleOctree\Vec3.h"
 #include "Octree\Octree.h"
 #include <glm/ext.hpp>
 #include <assert.h>
@@ -130,12 +128,23 @@ void Scene::AddObject(Rigidbody * a_obj)
 */
 void Scene::RemoveObject(Rigidbody * a_obj)
 {
+
 	// Find corresponding iterator to object pointer and remove from vector
 	auto foundIter = std::find(m_objects.begin(), m_objects.end(), a_obj);
 
 	assert(foundIter != m_objects.end() && "Attempted to remove object from scene that it does not own.");
 
 	m_objects.erase(foundIter);
+
+	// If connected via constraint, remove and delete attached constraint
+	for (auto constraint : m_constraints) {
+
+		if (constraint->ContainsObj(a_obj)) {
+
+			RemoveConstraint(constraint);
+			delete constraint;
+		}
+	}
 }
 
 /**
@@ -205,7 +214,8 @@ void Scene::PartitionCollisions()
 			// Add scene pointer to node so detect collisions function can be called later
 			n.scene = this;
 
-#if B_VOLUME_COLORS Change object colors to reflect what volume they are in
+			/// Change object colors to reflect what volume they are in
+#if B_VOLUME_COLORS 
 			// Assign object to volume color
 			currentObj->SetColor(n.debugColor);
 #endif
@@ -297,7 +307,7 @@ bool Scene::IsColliding_Plane_Sphere(Collision& a_collision) {
 	bool		b_otherSide		= planeSideCheck < 0 ? true : false;
 
 	glm::vec3	planeNormal	= !b_otherSide ? actorPlane->GetNormal() : -actorPlane->GetNormal();
-	float		planeDist = !b_otherSide ? actorPlane->GetDist() : -actorPlane->GetDist();								// If on other side, distance from origin is negated to account for change in normal.
+	float		planeDist	= !b_otherSide ? actorPlane->GetDist() : -actorPlane->GetDist();								// If on other side, distance from origin is negated to account for change in normal.
 		
 	// 1. Dot-product plane normal with sphere position (aka vector from origin to sphere position) = distance between sphere position and plane
 	float sphereDist = glm::dot(planeNormal, otherSphere->GetPos());
@@ -508,43 +518,43 @@ void Scene::DetectCollisions(const std::vector<Rigidbody*>& a_objects)
 		for (auto other_iter = actor_iter + 1; other_iter != a_objects.end(); ++other_iter) {
 			Rigidbody* actor = *actor_iter;
 			Rigidbody* other = *other_iter;
-			
+
 			// For each set of checks, create a temporary collision object to pass into colliding check functions
 			Collision tempCollision(actor, other);
-
-#pragma region Object Type Detection and Collision Checks
+			
+			#pragma region Object Type Detection and Collision Checks
 			// Determine what kind of object collision we're checking for and detect appropriately
 			switch (actor->GetShape())
 			{
 				case SPHERE:
 				{
-					switch (other->GetShape())
+				switch (other->GetShape())
+				{
+					case SPHERE:
 					{
-						case SPHERE:
-						{
-							if (IsColliding_Sphere_Sphere(tempCollision)) {
-								m_collisions.push_back(tempCollision);
-							}
+						if (IsColliding_Sphere_Sphere(tempCollision)) {
+							m_collisions.push_back(tempCollision);
+						}
 
-							break;
-						}
-						case AA_BOX:
-						{
-							if (IsColliding_Sphere_AABB(tempCollision)) {
-								m_collisions.push_back(tempCollision);
-							}
-							break;
-						}
-						case PLANE:
-						{
-							if (IsColliding_Sphere_Plane(tempCollision)) {
-								m_collisions.push_back(tempCollision);
-							}
-
-							break;
-						}
+						break;
 					}
-					break;
+					case AA_BOX:
+					{
+						if (IsColliding_Sphere_AABB(tempCollision)) {
+							m_collisions.push_back(tempCollision);
+						}
+						break;
+					}
+					case PLANE:
+					{
+						if (IsColliding_Sphere_Plane(tempCollision)) {
+							m_collisions.push_back(tempCollision);
+						}
+
+						break;
+					}
+				}
+				break;
 				}
 				case PLANE:
 				{
@@ -599,8 +609,53 @@ void Scene::DetectCollisions(const std::vector<Rigidbody*>& a_objects)
 			}
 		}
 #pragma endregion
-	
+
 	}
+
+#if 1
+#pragma region Octal Space Partitioning: Separate Plane Collision Checks
+	if (b_partitionCollisions && m_objects.size() > 1) {			// No point checking collisions if only one object in the scene
+		// Find and store pointers to all planes in the scene
+		std::vector<Rigidbody*> planes;
+
+		for (auto obj : m_objects) {
+			if (obj->GetShape() == PLANE) {
+				planes.push_back(obj);
+			}
+		}
+
+		// Check every plane against every other non-plane object
+		for (auto plane : planes) {
+
+			for (auto obj : m_objects) {
+				// Do not check object if it is a plane or apart of the current volume (avoids duplicate collision detections)
+				if (obj->GetShape() == PLANE || std::find(a_objects.begin(), a_objects.end(), obj) == a_objects.end()) {
+
+					continue;
+				}
+
+				Collision tempPlaneCollision(plane, obj);
+
+				if (obj->GetShape() == SPHERE) {
+
+					if (IsColliding_Plane_Sphere(tempPlaneCollision)) {
+
+						m_collisions.push_back(tempPlaneCollision);
+					};
+				}
+				if (obj->GetShape() == AA_BOX) {
+
+					if (IsColliding_Plane_AABB(tempPlaneCollision)) {
+
+						m_collisions.push_back(tempPlaneCollision);
+					}
+				}
+			}
+		}
+
+	}
+#pragma endregion
+#endif
 }
 
 /**
@@ -608,8 +663,6 @@ void Scene::DetectCollisions(const std::vector<Rigidbody*>& a_objects)
 *	@return void.
 */
 void Scene::ResolveCollisions() {
-	// TODO: Replace simple but naive way of resolving collisions
-
 	for (auto coll : m_collisions) {
 		/// VECTORS MUST ALWAYS POINT FROM OBJECT A TO OBJECT B (B - A)
 		// Objects are not completely static (collision vec length is not 0)
@@ -656,7 +709,8 @@ void Scene::ResolveCollisions() {
 */
 void Scene::ApplyKnockback_Dynamic(Collision& a_collision)
 {
-	const float restitution = 0.5f;	// TODO: Place restitution variable into Rigidbody
+	// Get average restitution of dynamic objects
+	float restitution = (a_collision.actor->GetRestitution() + a_collision.other->GetRestitution()) / 2.f;
 
 	/// Use collision resolution equation to find scale of impulse knockback force
 	// Modify the ratio of impulse force (MUST USE SAME METHOD AS CALCULATING COLLISION NORMAL: [B - A])
@@ -679,8 +733,6 @@ void Scene::ApplyKnockback_Dynamic(Collision& a_collision)
 */
 void Scene::ApplyKnockback_Static(Collision& a_collision)
 {
-	const float restitution = 0.5f;
-
 	// For readability create separate pointers that distinguish which object is static and which object is dynamic
 	Rigidbody* staticObj;
 	Rigidbody* dynamicObj;
@@ -694,6 +746,9 @@ void Scene::ApplyKnockback_Static(Collision& a_collision)
 		dynamicObj	= a_collision.other;
 		staticObj	= a_collision.actor;
 	}
+
+	// Get restitution of dynamic object
+	float restitution = dynamicObj->GetRestitution();
 
 	// Use collision resolution equation to find impulse knockback force.
 	// NOTE: Because one object is static, assume it has infinite mass and that the relative velocity is the velocity of the dynamic object

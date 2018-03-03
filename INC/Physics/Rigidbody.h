@@ -16,7 +16,7 @@ namespace Physebs {
 		// Constructor and destructor can be public because a variable of type Rigidbody can't exist if its pure virtual
 		Rigidbody(
 			const glm::vec3& a_pos = glm::vec3(), float a_mass = DEFAULT_MASS, float a_frict = DEFAULT_FRICTION, 
-			bool a_dynamic = true, const glm::vec4& a_color = DEFAULT_COLOR			// Alpha of 1 by default
+			bool a_dynamic = true, const glm::vec4& a_color = DEFAULT_COLOR, float a_restitution = DEFAULT_RESTITUTION			// Alpha of 1 by default
 		);
 
 		virtual ~Rigidbody() = 0;	// Inherited classes must define a destructor
@@ -54,6 +54,9 @@ namespace Physebs {
 		bool*				GetIsDynamicRef()					{ return &b_dynamic; }
 		bool				GetIsDynamic() const				{ return b_dynamic; }
 		void				SetIsDynamic(bool a_isDynamic)		{ b_dynamic = a_isDynamic; }
+
+		float				GetRestitution() const				{ return m_restitution; }
+		float*				GetRestitutionRef()					{ return &m_restitution; }
 	protected:
 		glm::vec3 m_pos;
 		glm::vec3 m_vel;
@@ -63,6 +66,7 @@ namespace Physebs {
 
 		float m_mass;
 		float m_frict;
+		float m_restitution;	// How much an object gets knocked back by another (e.g. bounciness)
 
 		bool b_dynamic;			// Whether rigidbody is affected by physics or not
 

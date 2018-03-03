@@ -1,4 +1,4 @@
-#include "_2018_02_06_PhysicsEngineApp.h"
+#include "_2018_03_04_PhysicsEngineDemonstrationApp.h"
 #include "Gizmos.h"
 #include "Input.h"
 #include <glm/glm.hpp>
@@ -20,16 +20,16 @@ using glm::mat4;
 using aie::Gizmos;
 using namespace Physebs;
 
-_2018_02_06_PhysicsEngineApp::_2018_02_06_PhysicsEngineApp() {
+_2018_03_04_PhysicsEngineDemonstrationApp::_2018_03_04_PhysicsEngineDemonstrationApp() {
 
 }
 
-_2018_02_06_PhysicsEngineApp::~_2018_02_06_PhysicsEngineApp() {
+_2018_03_04_PhysicsEngineDemonstrationApp::~_2018_03_04_PhysicsEngineDemonstrationApp() {
 
 }
 
-bool _2018_02_06_PhysicsEngineApp::startup() {
-	
+bool _2018_03_04_PhysicsEngineDemonstrationApp::startup() {
+
 	setBackgroundColour(0.25f, 0.25f, 0.25f);
 
 	// initialise gizmo primitive counts
@@ -50,7 +50,7 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	/// Create 2D grid of spheres
 	static int gridX = 4;
 	static int gridY = 4;
-	
+
 	static int gridStartX = 0;
 	static int gridStartY = 40;
 
@@ -107,15 +107,15 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	return true;
 }
 
-void _2018_02_06_PhysicsEngineApp::shutdown() {
+void _2018_03_04_PhysicsEngineDemonstrationApp::shutdown() {
 
 	delete m_camera;
 	delete m_scene;
-	
+
 	Gizmos::destroy();
 }
 
-void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
+void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 
 	// wipe the gizmos clean for this frame
 	Gizmos::clear();
@@ -125,7 +125,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 #pragma region IMGUI
 	// Ensure size and position is only set once and ignores whatever is in imgui.cfg
-	ImGui::SetNextWindowSize(ImVec2(600, 600), ImGuiSetCond_Once);		
+	ImGui::SetNextWindowSize(ImVec2(600, 600), ImGuiSetCond_Once);
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_Once);
 	ImGui::Begin("Physics Engine Interface");
 
@@ -134,23 +134,23 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	ImGui::Text("Global Forces");
 
 	static float	globalForce[3] = { 0.f, 0.f, 0.f };
-	static float	gravity		   = DEFAULT_GRAVITY;
+	static float	gravity = DEFAULT_GRAVITY;
 
 	ImGui::InputFloat3("Scene Global Force", globalForce, 2);
-	glm::vec3 currentGlobalForce	= glm::vec3(globalForce[0], globalForce[1], globalForce[2]);
+	glm::vec3 currentGlobalForce = glm::vec3(globalForce[0], globalForce[1], globalForce[2]);
 
 	ImGui::InputFloat("Scene Gravity", &gravity, 1.f, 0.f, 3);
-	glm::vec3 currentGravityForce	= glm::vec3(0.f, gravity, 0.f);
+	glm::vec3 currentGravityForce = glm::vec3(0.f, gravity, 0.f);
 
 	ImGui::NewLine();
 
 	/// Simulation options
 	ImGui::Text("Simulation Options");
 
-	static float	simulationOrigin[3]		= { 0.f, 0.f, 0.f };
-	static float	simulationExtents[3]	= { DEFAULT_SIMULATION_HALFEXTENTS.x, DEFAULT_SIMULATION_HALFEXTENTS.y, DEFAULT_SIMULATION_HALFEXTENTS.z };
-	
-	static float	minCellSize[3]			= MIN_VOLUME_SIZE;
+	static float	simulationOrigin[3] = { 0.f, 0.f, 0.f };
+	static float	simulationExtents[3] = { DEFAULT_SIMULATION_HALFEXTENTS.x, DEFAULT_SIMULATION_HALFEXTENTS.y, DEFAULT_SIMULATION_HALFEXTENTS.z };
+
+	static float	minCellSize[3] = MIN_VOLUME_SIZE;
 
 	ImGui::SliderFloat("Fixed Time Step", m_scene->GetTimeStepRef(), 0.001f, 1.f);
 
@@ -168,7 +168,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	}
 
 #pragma endregion
-	
+
 #pragma region Object Creator
 	if (ImGui::CollapsingHeader("Object Creator")) {
 		/// Make variables static so they're only defined once so their values at their addresses can be changed after by user input
@@ -237,15 +237,15 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			// Plane options
 			ImGui::Text("Plane Options");
 
-			static float normal[3]	= { DEFAULT_PLANE_NORMAL.x, DEFAULT_PLANE_NORMAL.y, DEFAULT_PLANE_NORMAL.z };
-			static float dist		= 0;
+			static float normal[3] = { DEFAULT_PLANE_NORMAL.x, DEFAULT_PLANE_NORMAL.y, DEFAULT_PLANE_NORMAL.z };
+			static float dist = 0;
 
 			ImGui::InputFloat3("Normal", normal, 2);
 			ImGui::InputFloat("Distance From Origin", &dist);
 
 			if (ImGui::SmallButton("Spawn Plane")) {
-				glm::vec3 currentNormal		= glm::vec3(normal[0], normal[1], normal[2]);
-				glm::vec3 currentPlanePos	= currentNormal * dist;					// Ignore user input for position and create it from normal and distance
+				glm::vec3 currentNormal = glm::vec3(normal[0], normal[1], normal[2]);
+				glm::vec3 currentPlanePos = currentNormal * dist;					// Ignore user input for position and create it from normal and distance
 
 				m_scene->AddObject(new Plane(currentNormal, dist, currentPlanePos, mass, friction, b_dynamic, currentColor, restitution));
 				b_createdObj = true;
@@ -259,7 +259,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 			static float extents[3] = { DEFAULT_AABB.x, DEFAULT_AABB.y, DEFAULT_AABB.z };
 			ImGui::InputFloat3("Extents", extents, 2);
-			
+
 			glm::vec3 currentExtents = glm::vec3(extents[0], extents[1], extents[2]);
 
 			/// Create outline of projected AABB from selected variables
@@ -295,7 +295,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	if (ImGui::CollapsingHeader("Object Selector")) {
 		static int selectedObjIndex = 0;		// Always start off looking at the first object
 
-		// There are objects in the scene to select
+												// There are objects in the scene to select
 		if (!m_scene->GetObjects().empty()) {
 			// Clamp index with vector constraints to ensure there is no overflow when an object is deleted
 			selectedObjIndex = Physebs::Clamp<int>(selectedObjIndex, int(m_scene->GetObjects().size() - 1), 0);
@@ -342,7 +342,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			/// Object is AABB, display relevant information
 			if (currentObj->GetShape() == AA_BOX) {
 				ImGui::Text("AABB Variables");
-				
+
 				AABB*	currentAABB = static_cast<AABB*>(currentObj);
 
 				ImGui::InputFloat3("Current Extents", currentAABB->GetExtentsRef(), 2);
@@ -398,7 +398,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 			static int attachedActorIndex = 0;
 			static int attachedOtherIndex = 1;		// Starts at one past the actor by default
-			
+
 			ImGui::NewLine();
 
 			ImGui::Text("Rigidbodies to Attach");
@@ -502,9 +502,9 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			if (constraintType == SPRING) {
 				ImGui::Text("Spring Options");
 
-				static float springiness	= DEFAULT_SPRINGINESS;
-				static float restLength		= DEFAULT_SPRING_LENGTH;
-				static float dampening		= DEFAULT_FRICTION;
+				static float springiness = DEFAULT_SPRINGINESS;
+				static float restLength = DEFAULT_SPRING_LENGTH;
+				static float dampening = DEFAULT_FRICTION;
 
 				ImGui::InputFloat("Springiness", &springiness, 1.f);
 				ImGui::InputFloat("Rest Length", &restLength, 1.f);
@@ -517,17 +517,17 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			}
 		}
 
-		
-		
+
+
 	}
 
 #pragma endregion
 
 #pragma region Constraint Selector
 	if (ImGui::CollapsingHeader("Constraint Selector")) {
-		
+
 		static int selectedConstraintIndex = 0;
-		
+
 		// There are constraints in the scene to select
 		if (m_scene->GetConstraints().size() != 0) {
 			// Clamp index by vector constraints
@@ -537,7 +537,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			Constraint* currentConstraint = m_scene->GetConstraints()[selectedConstraintIndex];
 
 			/// Create selection spheres at the position of each attached Rigidbody
-			aie::Gizmos::addSphere(currentConstraint->GetAttachedActor()->GetPos(), 
+			aie::Gizmos::addSphere(currentConstraint->GetAttachedActor()->GetPos(),
 				DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.x, DEFAULT_CONSTRAINT_SELECTION_COLOR);
 			aie::Gizmos::addSphere(currentConstraint->GetAttachedOther()->GetPos(),
 				DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.x, DEFAULT_CONSTRAINT_SELECTION_COLOR);
@@ -620,7 +620,7 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 		quit();
 }
 
-void _2018_02_06_PhysicsEngineApp::draw() {
+void _2018_03_04_PhysicsEngineDemonstrationApp::draw() {
 
 	// wipe the screen to the background colour
 	clearScreen();

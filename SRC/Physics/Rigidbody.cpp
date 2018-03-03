@@ -9,10 +9,10 @@ using namespace Physebs;
 
 Rigidbody::Rigidbody(
 	const glm::vec3 & a_pos, float a_mass, float a_frict, 
-	bool a_dynamic, const glm::vec4& a_color
+	bool a_dynamic, const glm::vec4& a_color, float a_restitution
 ) :
 	m_pos(a_pos), m_mass(a_mass), m_frict(a_frict), 
-	b_dynamic(a_dynamic), m_color(a_color)
+	b_dynamic(a_dynamic), m_color(a_color), m_restitution(a_restitution)
 {
 	// Initialise to null vec3 (0, 0, 0)
 	m_vel	= glm::vec3();

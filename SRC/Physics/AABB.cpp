@@ -6,10 +6,10 @@ using namespace Physebs;
 
 AABB::AABB(
 	const glm::vec3 & a_extents,
-	const glm::vec3 & a_pos, float a_mass, float a_frict, bool a_dynamic, const glm::vec4 & a_color
+	const glm::vec3 & a_pos, float a_mass, float a_frict, bool a_dynamic, const glm::vec4 & a_color, float a_restitution
 ) :
 	m_extents(a_extents),
-	Rigidbody(a_pos, a_mass, a_frict, a_dynamic, a_color) // Call base constructor to handle assigning inherited variables
+	Rigidbody(a_pos, a_mass, a_frict, a_dynamic, a_color, a_restitution) // Call base constructor to handle assigning inherited variables
 {
 	m_shape = AA_BOX;
 }
