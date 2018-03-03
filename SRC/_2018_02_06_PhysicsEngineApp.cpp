@@ -35,10 +35,6 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	// initialise gizmo primitive counts
 	Gizmos::create(100000, 100000, 100000, 100000);
 
-	//// create simple camera transforms
-	//m_viewMatrix = glm::lookAt(vec3(10), vec3(0), vec3(0, 1, 0));
-	//m_projectionMatrix = glm::perspective(glm::pi<float>() * 0.25f, 16.0f / 9.0f, 0.1f, 1000.0f);
-
 	// Custom camera calibration
 	m_camera = new Camera();
 	m_camera->SetProjection(glm::radians(45.0f), (float)getWindowWidth() / (float)getWindowHeight(), CAMERA_NEAR, CAMERA_FAR);
@@ -48,10 +44,6 @@ bool _2018_02_06_PhysicsEngineApp::startup() {
 	// Make a scene (ha-ha)
 	m_scene = new Scene();
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
-	
-	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 0, 0), 10.f, 8.f, false));
-	//m_scene->AddObject(new Plane(glm::vec3(0, -1, 0), -5));
-	//m_scene->AddObject(new AABB(DEFAULT_AABB, glm::vec3(0, 10, 0)));
 
 #if 0
 #pragma region Manual Object Creation
@@ -138,7 +130,9 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 	ImGui::Begin("Physics Engine Interface");
 
 #pragma region Scene Options
-	/// Global force
+	/// Global forces
+	ImGui::Text("Global Forces");
+
 	static float	globalForce[3] = { 0.f, 0.f, 0.f };
 	static float	gravity		   = DEFAULT_GRAVITY;
 
@@ -147,6 +141,30 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 	ImGui::InputFloat("Scene Gravity", &gravity, 1.f, 0.f, 3);
 	glm::vec3 currentGravityForce	= glm::vec3(0.f, gravity, 0.f);
+
+	ImGui::NewLine();
+
+	/// Simulation options
+	ImGui::Text("Simulation Options");
+
+	static float	simulationOrigin[3]		= { 0.f, 0.f, 0.f };
+	static float	simulationExtents[3]	= { DEFAULT_SIMULATION_HALFEXTENTS.x, DEFAULT_SIMULATION_HALFEXTENTS.y, DEFAULT_SIMULATION_HALFEXTENTS.z };
+	
+	static float	minCellSize[3]			= MIN_VOLUME_SIZE;
+
+	ImGui::Checkbox("Use Octal Space Partitioning", m_scene->GetIsPartitionedRef());
+
+	// Simulation is using partitioning, show partition options
+	if (*(m_scene->GetIsPartitionedRef())) {		// De-reference to get bool
+
+		ImGui::InputFloat3("Simulation Origin", simulationOrigin, 2);
+		ImGui::InputFloat3("Simulation Size", simulationExtents, 2);
+		m_scene->GetPartitionTree()->SetVolume(simulationOrigin, simulationExtents);
+
+		ImGui::InputFloat3("Minimum Collision Volume", minCellSize, 2);
+		m_scene->GetPartitionTree()->SetMinCell(minCellSize);
+	}
+
 #pragma endregion
 	
 #pragma region Object Creator
@@ -162,6 +180,9 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 		static bool b_createdObj = false;
 
 		// Universal Rigidbody options
+		ImGui::NewLine();
+		ImGui::Text("Universal Rigidbody Options");
+
 		static float	pos[3] = { 0.f, 0.f, 0.f };
 		static float	force[3] = { 0.f, 0.f, 0.f };
 		static float	mass = DEFAULT_MASS;
@@ -183,9 +204,13 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 		glm::vec3 currentForce = glm::vec3(force[0], force[1], force[2]);
 		glm::vec4 currentColor = glm::vec4(color[0], color[1], color[2], color[3]);
 
+		ImGui::NewLine();
+
 		/// Create a sphere
 		if (shape == SPHERE) {
 			// Sphere options
+			ImGui::Text("Sphere Options");
+
 			static float dim[2] = { DEFAULT_SPHERE.x, DEFAULT_SPHERE.y };
 			static float radius = DEFAULT_MASS;
 
@@ -206,6 +231,8 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 		/// Create a plane
 		if (shape == PLANE) {
 			// Plane options
+			ImGui::Text("Plane Options");
+
 			static float normal[3]	= { DEFAULT_PLANE_NORMAL.x, DEFAULT_PLANE_NORMAL.y, DEFAULT_PLANE_NORMAL.z };
 			static float dist		= 0;
 
@@ -224,6 +251,8 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 		/// Create an AABB
 		if (shape == AA_BOX) {
 			// AABB options
+			ImGui::Text("AABB Options");
+
 			static float extents[3] = { DEFAULT_AABB.x, DEFAULT_AABB.y, DEFAULT_AABB.z };
 			ImGui::InputFloat3("Extents", extents, 2);
 			
@@ -277,14 +306,20 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			ImGui::Text("OBJECT #%i", selectedObjIndex + 1);
 
 			// Plug references to current universal rigidbody variables into input fields so they update in real-time
+			ImGui::Text("Universal Rigidbody Variables");
+
 			ImGui::InputFloat3("Current Position", currentObj->GetPosRef(), 2);
 			ImGui::InputFloat("Current Mass", currentObj->GetMassRef(), 1.f, 0.f, 2);
 			ImGui::InputFloat("Current Friction", currentObj->GetFrictRef(), 1.f, 0.f, 2);
 			ImGui::ColorEdit4("Current Color", currentObj->GetColorRef());
 			ImGui::Checkbox("Current Is Dynamic", currentObj->GetIsDynamicRef());
 
+			ImGui::NewLine();
+
 			/// Object is sphere, display relevant information
 			if (currentObj->GetShape() == SPHERE) {
+				ImGui::Text("Sphere Variables");
+
 				Sphere* currentSphere = static_cast<Sphere*>(currentObj);
 
 				ImGui::InputInt2("Current Dimensions", currentSphere->GetDimensionsRef());
@@ -293,6 +328,8 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 			/// Object is plane, display relevant information
 			if (currentObj->GetShape() == PLANE) {
+				ImGui::Text("Plane Variables");
+
 				Plane*	currentPlane = static_cast<Plane*>(currentObj);
 
 				ImGui::InputFloat3("Current Normal", currentPlane->GetNormalRef(), 2);
@@ -301,6 +338,8 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 			/// Object is AABB, display relevant information
 			if (currentObj->GetShape() == AA_BOX) {
+				ImGui::Text("AABB Variables");
+				
 				AABB*	currentAABB = static_cast<AABB*>(currentObj);
 
 				ImGui::InputFloat3("Current Extents", currentAABB->GetExtentsRef(), 2);
@@ -356,6 +395,9 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			ImGui::RadioButton("Spring", &constraintType, 0);
 
 			/// Universal constraint options
+			ImGui::NewLine();
+			ImGui::Text("Universal Constraint Options");
+
 			static float constraintColor[4] = { DEFAULT_CONSTRAINT_COLOR.r, DEFAULT_CONSTRAINT_COLOR.g, DEFAULT_CONSTRAINT_COLOR.b, DEFAULT_CONSTRAINT_COLOR.a };
 			ImGui::ColorEdit4("Constraint Color", constraintColor);
 
@@ -364,6 +406,9 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 			static int attachedActorIndex = 0;
 			static int attachedOtherIndex = 1;		// Starts at one past the actor by default
 			
+			ImGui::NewLine();
+
+			ImGui::Text("Rigidbodies to Attach");
 #pragma region Mini Actor Selector
 			attachedActorIndex = Physebs::Clamp<int>(attachedActorIndex, m_scene->GetObjects().size() - 1, 0);		// Ensure selected actor doesn't overflow
 			Rigidbody* selectedActor = m_scene->GetObjects()[attachedActorIndex];
@@ -458,8 +503,12 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 #pragma endregion
 
 			/// Constraint-type specific attributes
+			ImGui::NewLine();
+
 			// Display spring attributes
 			if (constraintType == SPRING) {
+				ImGui::Text("Spring Options");
+
 				static float springiness = DEFAULT_SPRINGINESS;
 				static float restLength = DEFAULT_SPRING_LENGTH;
 
@@ -500,10 +549,16 @@ void _2018_02_06_PhysicsEngineApp::update(float deltaTime) {
 
 			// Display editable properties of selected constraint
 			/// Universal
+			ImGui::Text("Universal Constraint Variables");
+
 			ImGui::ColorEdit4("Current Constraint Color", currentConstraint->GetColorRef());
 
 			/// Specific to type
+			ImGui::NewLine();
+
 			if (currentConstraint->GetType() == SPRING) {
+				ImGui::Text("Spring Variables");
+
 				Spring* currentSpring = static_cast<Spring*>(currentConstraint);
 
 				ImGui::InputFloat("Current Springiness", currentSpring->GetSpringinessRef(), 1.f);
@@ -579,10 +634,4 @@ void _2018_02_06_PhysicsEngineApp::draw() {
 
 	Gizmos::draw(m_camera->GetProjectionView());
 
-#pragma region 3D Template Code
-	//// update perspective based on screen size
-	//m_projectionMatrix = glm::perspective(glm::pi<float>() * 0.25f, getWindowWidth() / (float)getWindowHeight(), 0.1f, 1000.0f);
-
-	//Gizmos::draw(m_projectionMatrix * m_viewMatrix);
-#pragma endregion
 }

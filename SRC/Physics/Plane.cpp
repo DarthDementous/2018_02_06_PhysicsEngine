@@ -13,7 +13,7 @@ Plane::Plane(
 {
 	m_shape = PLANE;
 
-	// Ensure the vector passed in for normal is a unit vector (normalised) if its not 0 to avoid nan errors
+	// Ensure the vector passed in for normal is a unit vector (length of 1) if its not 0 to avoid nan errors
 	if (glm::length(m_normal) != 0) {
 		m_normal = glm::normalize(m_normal);
 	}

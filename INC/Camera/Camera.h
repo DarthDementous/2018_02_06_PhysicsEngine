@@ -3,6 +3,9 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
+/**
+*	NOTE: This Camera class was created by Marc Chee for use in Bootstrap for the 3D Physics Engine assignment.
+*/
 class Camera
 {
 public:

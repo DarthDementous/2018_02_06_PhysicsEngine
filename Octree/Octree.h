@@ -101,6 +101,18 @@ public:
 	float* GetMin() { return &_min.x; }
 	float* GetMax() { return &_max.x; }
 
+	/// SEB CUSTOM MODIFICATIONS: Setters
+	void SetVolume(float a_origin[3], float a_extents[3]) {
+		Point halfExtents = Point(a_extents[0] / 2.f, a_extents[1] / 2.f, a_extents[2] / 2.f);
+
+		_min = Point(a_origin) - halfExtents;
+		_max = Point(a_origin) = halfExtents;
+	}
+
+	void SetMinCell(float a_minCellSize[3]) {
+		_cellSize = Point(a_minCellSize[0], a_minCellSize[1], a_minCellSize[2]);
+	}
+
     class Callback
     {
     public:

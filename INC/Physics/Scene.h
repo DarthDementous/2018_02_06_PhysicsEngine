@@ -8,10 +8,6 @@
 #include <Gizmos.h>
 #include <iostream>
 
-namespace brandonpelfrey {
-	class Octree;
-}
-
 namespace Physebs {
 	class Rigidbody;
 	class Sphere;
@@ -48,7 +44,7 @@ namespace Physebs {
 
 	/**
 	*	@brief Class that holds onto rigidbody objects and handles their physics (gravity, forces, collisions).
-	*	NOTE: Standards for collision are creating a vector from A to B.
+	*	NOTE: Standards for collision are creating a vector from A to B [B-A].
 	*/
 	class Scene {
 	public:
@@ -88,19 +84,17 @@ namespace Physebs {
 
 		const glm::vec3&	GetGlobalForce() const						{ return m_globalForce; }
 		void				SetGlobalForce(const glm::vec3& a_force)	{ m_globalForce = a_force; }
+
+		bool*				GetIsPartitionedRef()						{ return &b_partitionCollisions; }
 	protected:
 		glm::vec3 m_gravity;
-		glm::vec3 m_globalForce;				// Force that will affect all objects
+		glm::vec3 m_globalForce;					// Force that will affect all objects
 
 		std::vector<Rigidbody*>		m_objects;
 		std::vector<Constraint*>	m_constraints;	// Hold onto all constraints between objects
 		std::vector<Collision>		m_collisions;	// Hold onto all collisions that have occured in the frame for collision resolution
 
-		// Optimization
-		//brandonpelfrey::Octree*		m_spatialPartitionTree = nullptr;	// Simple octree library implementation for segmenting collision detections into AABBs
-	protected:
-		glm::vec3						m_simulationOrigin;							// Origin point of initial collision detection AABB
-		glm::vec3						m_simulationHalfExtents;					// Half extents of initial collision detection AABB  
+		bool b_partitionCollisions = true;			// Whether octal space partitioning is used to detect collisions. (ON BY DEFAULT)
 
 		// Fixed Update variables
 		float m_fixedTimeStep;														// The fixed time between updates of the scene
@@ -121,8 +115,6 @@ namespace Physebs {
 
 			PartitionNode() {
 				
-				// Generate random color for volume
-				//debugColor = glm::vec4((rand() % 255) / 255.f, (rand() % 255) / 255.f, (rand() % 255) / 255.f, 1.f);	 // Generate random numbers between 0-255 and then divide by 255 to get RGB float values
 				debugColor = glm::vec4(1, 0, 0, 0.25f);
 			}
 
@@ -131,6 +123,10 @@ namespace Physebs {
 			std::vector<Rigidbody*> containedObjects;						// List of pointers to object that are inside the partition volume
 		};
 
+	public:
+		Octree<PartitionNode>*	GetPartitionTree() { return m_spatialPartitionTree; }
+
+	private:
 		Octree<PartitionNode>*	m_spatialPartitionTree = nullptr;
 
 		/**

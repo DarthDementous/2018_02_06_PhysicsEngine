@@ -21,6 +21,10 @@ Spring::~Spring()
 {
 }
 
+/**
+*	@brief Calculate and apply spring force for objects based on the length of the spring compared to the resting length.
+*	@return void.
+*/
 void Spring::Constrain()
 {
 	// 1. Get difference between target length and current distance between attached rigidbodies

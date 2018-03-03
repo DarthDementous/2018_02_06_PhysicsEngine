@@ -8,6 +8,9 @@ namespace Physebs {
 
 	class Rigidbody;
 
+	/**
+	*	@brief Pure abstract class representing a relationship between two objects that affects how they exist in relation to other in the simulation.
+	*/
 	class Constraint {
 	public:
 		Constraint(Rigidbody* a_attachedActor, Rigidbody* a_attachedOther, const glm::vec4& a_color = DEFAULT_CONSTRAINT_COLOR);

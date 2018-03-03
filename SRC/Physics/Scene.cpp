@@ -16,8 +16,7 @@ using namespace Physebs;
 Scene::Scene(const glm::vec3 & a_gravityForce, const glm::vec3& a_globalForce, 
 	const glm::vec3& a_simulationOrigin, const glm::vec3& a_simulationHalfExtents) 
 	: 
-	m_gravity(a_gravityForce), m_globalForce(a_globalForce),
-	m_simulationOrigin(a_simulationOrigin), m_simulationHalfExtents(a_simulationHalfExtents)
+	m_gravity(a_gravityForce), m_globalForce(a_globalForce)
 {
 	// Defaults for 100fps
 	m_fixedTimeStep		= 0.01f;		// One-hundreth of a second
@@ -29,9 +28,6 @@ Scene::Scene(const glm::vec3 & a_gravityForce, const glm::vec3& a_globalForce,
 	float minCellSize[3]	= MIN_VOLUME_SIZE;
 
 	m_spatialPartitionTree = new Octree<PartitionNode>(simulationMin, simulationMax, minCellSize);
-
-//	m_spatialPartitionTree = new Octree(Vec3(m_simulationOrigin.x, m_simulationOrigin.y, m_simulationOrigin.z), 
-//		Vec3(m_simulationHalfExtents.x, m_simulationHalfExtents.y, m_simulationHalfExtents.z));
 }
 
 Scene::~Scene()
@@ -71,8 +67,9 @@ void Scene::FixedUpdate(float a_dt)
 void Scene::Update() {
 	ApplyGravity();
 
+	// Regardless of how long update takes to be called, time between frames will be consistent now
 	for (auto obj : m_objects) {
-		obj->Update(m_fixedTimeStep);			// Regardless of how long update takes to be called, time between frames will be consistent now
+		obj->Update(m_fixedTimeStep);			
 	}
 
 	for (auto constraint : m_constraints) {
@@ -80,12 +77,18 @@ void Scene::Update() {
 	}
 
 	// Detect and resolve collisions after calculating object movement
-#if B_PARTITION_COLLISIONS	Octree optimisation, checks only objects in a given volume
-	PartitionCollisions();
-#else O(n^2) complexity, checks every single object in scene against every other object
-	
-	DetectCollisions(m_objects);
-#endif
+	/// Octree optimisation, segments objects into volumes and checks only objects in that volume
+	if (b_partitionCollisions) {
+		PartitionCollisions();
+	}
+
+	/// O(n^2) complexity, checks every single object in scene against every other object
+	else {
+		// In case partitioning is switched off in real-time make sure partition tree is clear
+		m_spatialPartitionTree->clear();
+
+		DetectCollisions(m_objects);
+	}
 
 	ResolveCollisions();
 }
@@ -107,10 +110,6 @@ void Scene::Draw()
 	OctreeCallbackDebug ocd;
 
 	m_spatialPartitionTree->traverse(&ocd);
-
-	// Clear partition tree to be rebuilt and drawn again
-	//m_spatialPartitionTree->clear();
-	
 #endif
 }
 
@@ -230,18 +229,18 @@ bool Scene::IsColliding_Sphere_Sphere(Collision& a_collision)
 	assert(a_collision.actor->GetShape() == SPHERE && "IsColliding_Sphere_Sphere collision actor is not a sphere.");
 	Sphere* actorSphere = static_cast<Sphere*>(a_collision.actor);
 
-assert(a_collision.other->GetShape() == SPHERE && "IsColliding_Sphere_Sphere collision other is not a sphere.");
-Sphere* otherSphere = static_cast<Sphere*>(a_collision.other);
-
-// Distance between origins is less than radii of the spheres, they have collided
-glm::vec3 collVec = otherSphere->GetPos() - actorSphere->GetPos();
-float dist = glm::length(collVec);
-
-if (dist < actorSphere->GetRadius() + otherSphere->GetRadius()) {
-	a_collision.overlap = (actorSphere->GetRadius() + otherSphere->GetRadius()) - dist; //  (Radii - distance) NOT (distance - radii) or there will be negative cases
-	a_collision.collisionNormal = (dist != 0) ? glm::normalize(collVec) : collVec;	// Normalize collision vector if length is not 0
-
-	return true;
+	assert(a_collision.other->GetShape() == SPHERE && "IsColliding_Sphere_Sphere collision other is not a sphere.");
+	Sphere* otherSphere = static_cast<Sphere*>(a_collision.other);
+	
+	// Check if distance between origins is less than radii of the spheres, if so then they have collided
+	glm::vec3 collVec = otherSphere->GetPos() - actorSphere->GetPos();
+	float dist = glm::length(collVec);
+	
+	if (dist < actorSphere->GetRadius() + otherSphere->GetRadius()) {
+		a_collision.overlap = (actorSphere->GetRadius() + otherSphere->GetRadius()) - dist;		//  (Radii - distance) NOT (distance - radii) or there will be negative cases
+		a_collision.collisionNormal = (dist != 0) ? glm::normalize(collVec) : collVec;			// Normalize collision vector if length is not 0
+	
+		return true;
 }
 
 
@@ -294,18 +293,18 @@ bool Scene::IsColliding_Plane_Sphere(Collision& a_collision) {
 
 	/// Assume everything is at the origin so positions can also be vectors
 	// Determine plane normal by dot-producting with sphere position to work out what side of the plane the sphere is on [positive = normal side, negative = other side]
-	float	planeSideCheck	= glm::dot(actorPlane->GetNormal(), otherSphere->GetPos()) - actorPlane->GetDist();	// Account for offset from origin
-	bool	b_otherSide		= planeSideCheck < 0 ? true : false;
+	float		planeSideCheck	= glm::dot(actorPlane->GetNormal(), otherSphere->GetPos()) - actorPlane->GetDist();		// Account for offset from origin
+	bool		b_otherSide		= planeSideCheck < 0 ? true : false;
 
 	glm::vec3	planeNormal	= !b_otherSide ? actorPlane->GetNormal() : -actorPlane->GetNormal();
-	float		planeDist = !b_otherSide ? actorPlane->GetDist() : -actorPlane->GetDist();						// If on other side, distance from origin is negated to account for change in normal.
+	float		planeDist = !b_otherSide ? actorPlane->GetDist() : -actorPlane->GetDist();								// If on other side, distance from origin is negated to account for change in normal.
 		
 	// 1. Dot-product plane normal with sphere position (aka vector from origin to sphere position) = distance between sphere position and plane
 	float sphereDist = glm::dot(planeNormal, otherSphere->GetPos());
 	// 2. Get final distance by minusing plane distance from sphere distance to account for plane not being at the origin
 	float finalDist = sphereDist - planeDist;
 
-	// 4. Check if final distance is less than the radius of the sphere
+	// 3. Check if final distance is less than the radius of the sphere
 	if (finalDist < otherSphere->GetRadius()) {
 		a_collision.overlap = otherSphere->GetRadius() - finalDist;		// How much objects have intersected taking sphere radius into account
 		a_collision.collisionNormal = planeNormal;

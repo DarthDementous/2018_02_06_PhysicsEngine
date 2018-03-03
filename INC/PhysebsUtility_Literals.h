@@ -1,8 +1,7 @@
 #pragma once
 
 #define B_SHOW_PARTITIONS 1			// Whether or not to show AABBs for each volume in the partition tree
-#define B_PARTITION_COLLISIONS 1	// Whether to use octal space partitioning optimisation for collisions
-#define B_VOLUME_COLORS 1			// Whether to set object colors to the volume they are contained in
+#define B_VOLUME_COLORS 0			// Whether to set object colors to the volume they are contained in
 
 // The limit point before a value will be zeroed
 #define EPSILON 0.001f

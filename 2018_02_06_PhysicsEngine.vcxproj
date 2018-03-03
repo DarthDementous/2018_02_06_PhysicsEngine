@@ -173,7 +173,7 @@
     <ClCompile Include="SRC\Physics\Scene.cpp" />
     <ClCompile Include="SRC\Physics\Sphere.cpp" />
     <ClCompile Include="SRC\Physics\Spring.cpp" />
-    <ClCompile Include="_2018_02_06_PhysicsEngineApp.cpp" />
+    <ClCompile Include="SRC\_2018_02_06_PhysicsEngineApp.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -223,7 +223,7 @@
     <ClInclude Include="SimpleOctree\OctreePoint.h" />
     <ClInclude Include="SimpleOctree\Stopwatch.h" />
     <ClInclude Include="SimpleOctree\Vec3.h" />
-    <ClInclude Include="_2018_02_06_PhysicsEngineApp.h" />
+    <ClInclude Include="INC\_2018_02_06_PhysicsEngineApp.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram1.cd" />
