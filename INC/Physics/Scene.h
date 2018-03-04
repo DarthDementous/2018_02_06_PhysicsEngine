@@ -7,6 +7,7 @@
 #include "Octree\Octree.h"
 #include <Gizmos.h>
 #include <iostream>
+#include "tinyxml2\tinyxml2.h"
 
 namespace Physebs {
 	class Rigidbody;
@@ -60,6 +61,11 @@ namespace Physebs {
 
 		void AddConstraint(Constraint* a_constraint);
 		void RemoveConstraint(Constraint* a_constraint);
+
+		Rigidbody* GetObjectByID(unsigned int a_id);
+
+		tinyxml2::XMLError SaveScene(const char* a_fileName);
+		tinyxml2::XMLError LoadScene(const char* a_fileName);
 
 		void ApplyGlobalForce();
 
@@ -116,11 +122,11 @@ namespace Physebs {
 
 			PartitionNode() {
 				
-				debugColor = glm::vec4(1, 0, 0, 0.25f);
+				debugColor = glm::vec4(1, 0, 0, 1.f);
 			}
 
 			Scene*					scene = nullptr;						// What scene contained objects are apart of
-			glm::vec4				debugColor = glm::vec4();				// What color to draw contained objects in. All values set to 0 by default.
+			glm::vec4				debugColor;								// What color to draw contained objects in.
 			std::vector<Rigidbody*> containedObjects;						// List of pointers to object that are inside the partition volume
 		};
 

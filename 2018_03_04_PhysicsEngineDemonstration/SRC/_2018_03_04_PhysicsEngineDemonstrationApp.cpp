@@ -10,15 +10,14 @@
 #include "Camera\Camera.h"
 #include "Physics\Spring.h"
 #include "PhysebsUtility_Funcs.h"
+#include "tinyxml2/tinyxml2.h"
 #include <algorithm>
 #include <iostream>
 #include <imgui.h>
 
-using glm::vec3;
-using glm::vec4;
-using glm::mat4;
 using aie::Gizmos;
 using namespace Physebs;
+using namespace tinyxml2;
 
 _2018_03_04_PhysicsEngineDemonstrationApp::_2018_03_04_PhysicsEngineDemonstrationApp() {
 
@@ -44,66 +43,13 @@ bool _2018_03_04_PhysicsEngineDemonstrationApp::startup() {
 	// Make a scene (ha-ha)
 	m_scene = new Scene();
 	m_scene->SetGlobalForce(glm::vec3(0.f, 0, 0));
+	*m_scene->GetIsPartitionedRef() = false;
 
-#if 0
-#pragma region Manual Object Creation
-	/// Create 2D grid of spheres
-	static int gridX = 4;
-	static int gridY = 4;
+	m_scene->LoadScene("./default.scene");
 
-	static int gridStartX = 0;
-	static int gridStartY = 40;
+	// Enable v sync for more consistent frames per second in order to analyse performance
+	setVSync(true);
 
-	static float offsetX = 10;
-	static float offsetY = 10;
-
-	static float spacing = 10;
-
-	// r x c
-	for (int y = 0; y < gridY; y++) {
-		for (int x = 0; x < gridX; x++) {
-			// Add sphere to current grid spot
-			glm::vec3 currentSpawnPos = glm::vec3(gridStartX + offsetX + (x * spacing), gridStartY + offsetY + (y * spacing), 0);
-
-			m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, currentSpawnPos));
-
-
-		}
-	}
-
-	//m_scene->AddObject(new AABB(glm::vec3(6, 6, 6), glm::vec3(), 10, 8, false));
-	//m_scene->AddObject(new AABB(glm::vec3(4, 4, 4), glm::vec3(10, -10, 0), 15, 8, true));
-	//m_scene->AddObject(new Plane());
-
-	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(10, 0, 2), 6, 8, true));
-	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 20, 2), 6, 8, true));
-	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 30, 2), 6, 8, true));
-
-	//m_scene->AddConstraint(new Spring(m_scene->GetObjects()[0], m_scene->GetObjects()[1]));
-	//m_scene->AddConstraint(new Spring(m_scene->GetObjects()[1], m_scene->GetObjects()[2]));
-
-	//m_scene->AddObject(new Plane(DEFAULT_PLANE_NORMAL, -5));
-	//m_scene->AddObject(new Sphere(2.f, DEFAULT_SPHERE, glm::vec3(0, 60, 2), 6));
-
-	//static const float massStep = 4.f;
-
-	//// Default weight (RED)
-	///*m_scene->AddObject(new Sphere(DEFAULT_MASS, glm::vec2(16.f, 16.f),
-	//glm::vec3(0, DEFAULT_MASS, 0), DEFAULT_MASS, 4.f, true, glm::vec4(1.f, 0.f, 0.f, 1.f)));*/
-
-	//// Light weight (GREEN)
-	//float mass = std::max(DEFAULT_MASS - massStep, 1.f);		// Ensure mass does not end up negative or else object will accelerate in the wrong direction
-	//m_scene->AddObject(new Sphere(mass, glm::vec2(16.f, 16.f),
-	//	glm::vec3(massStep, mass - massStep, 0), mass, 4.f, true, glm::vec4(0.f, 1.f, 0.f, 1.f)));
-
-	//// Heavy weight (BLUE)
-	//Sphere* bigboi = new Sphere(DEFAULT_MASS + massStep, glm::vec2(16.f, 16.f),
-	//	glm::vec3(-massStep, DEFAULT_MASS + massStep, 0), DEFAULT_MASS + massStep, 4.f, true, glm::vec4(0.f, 0.f, 1.f, 1.f));
-	//bigboi->ApplyImpulseForce(glm::vec3(10.f, 0.f, 0.f));
-
-	//m_scene->AddObject(bigboi);
-#pragma endregion
-#endif
 	return true;
 }
 
@@ -124,12 +70,66 @@ void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 	aie::Input* input = aie::Input::getInstance();
 
 #pragma region IMGUI
+	/// FPS Window
+	ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiSetCond_Once);
+	ImGui::SetNextWindowPos(ImVec2(1100, 0), ImGuiSetCond_Once);
+	
+	ImGui::Begin("FPS Calculator");
+
+	unsigned int currentFPS = getFPS();
+	ImVec4 fpsColor;
+
+	// Set color of FPS depending on what range it's in
+
+	// Healthy FPS [60-infinity] = green
+	if (currentFPS >= 60) {
+		fpsColor = ImVec4(0, 1, 0, 1);
+	}
+	// Moderate FPS [25-60) = yellow
+	if (currentFPS > 25 && currentFPS < 60) {
+		fpsColor = ImVec4(1, 1, 0, 1);
+	}
+	// Poor FPS [0-25] = red
+	if (currentFPS >= 0 && currentFPS <= 25) {
+		fpsColor = ImVec4(1, 0, 0, 1);
+	}
+
+	ImGui::TextColored(fpsColor, "FPS: %i", currentFPS);
+	ImGui::End();
+
 	// Ensure size and position is only set once and ignores whatever is in imgui.cfg
 	ImGui::SetNextWindowSize(ImVec2(600, 600), ImGuiSetCond_Once);
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_Once);
 	ImGui::Begin("Physics Engine Interface");
 
 #pragma region Scene Options
+	/// Saving and loading
+	static char fileName[256] = "default.scene";
+	ImGui::InputText("File Name", fileName, 256);
+
+	// Add path to folder where application is being run
+	char filePath[256];
+	sprintf_s(filePath, "./%s", fileName);
+
+	// Store results of saving and loading as an XML error to precisely identify what went wrong
+	XMLError eResult;
+
+	if (ImGui::SmallButton("Save Scene")) {
+		
+		eResult = m_scene->SaveScene(filePath);
+		assert(eResult == XML_SUCCESS && "Failed to Save Scene");
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::SmallButton("Load Scene")) {
+
+		eResult = m_scene->LoadScene(filePath);
+		assert(eResult == XML_SUCCESS && "Failed to Load Scene");
+	}
+
+	ImGui::NewLine();
+
 	/// Global forces
 	ImGui::Text("Global Forces");
 
@@ -302,9 +302,6 @@ void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 
 			Rigidbody* currentObj = m_scene->GetObjects()[selectedObjIndex];
 
-			/// Indicate selection via low-poly sphere at selected object position
-			aie::Gizmos::addSphere(currentObj->GetPos(), DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.y, DEFAULT_SELECTION_COLOR);
-
 			ImGui::Text("OBJECT #%i", selectedObjIndex + 1);
 
 			// Plug references to current universal rigidbody variables into input fields so they update in real-time
@@ -319,11 +316,14 @@ void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 
 			ImGui::NewLine();
 
+			float selectionRadius;
+
 			/// Object is sphere, display relevant information
 			if (currentObj->GetShape() == SPHERE) {
 				ImGui::Text("Sphere Variables");
 
 				Sphere* currentSphere = static_cast<Sphere*>(currentObj);
+				selectionRadius = currentSphere->GetRadius() * 2;
 
 				ImGui::InputInt2("Current Dimensions", currentSphere->GetDimensionsRef());
 				ImGui::InputFloat("Current Radius", currentSphere->GetRadiusRef(), 1.f, 0.f, 2);
@@ -334,6 +334,7 @@ void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 				ImGui::Text("Plane Variables");
 
 				Plane*	currentPlane = static_cast<Plane*>(currentObj);
+				selectionRadius = DEFAULT_SELECTION_RADIUS;
 
 				ImGui::InputFloat3("Current Normal", currentPlane->GetNormalRef(), 2);
 				ImGui::InputFloat("Current Distance From Origin", currentPlane->GetDistRef(), 1);
@@ -344,9 +345,13 @@ void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 				ImGui::Text("AABB Variables");
 
 				AABB*	currentAABB = static_cast<AABB*>(currentObj);
+				selectionRadius = glm::length(currentAABB->GetExtents()) / 2.f;
 
 				ImGui::InputFloat3("Current Extents", currentAABB->GetExtentsRef(), 2);
 			}
+
+			/// Indicate selection via low-poly sphere at selected object position
+			aie::Gizmos::addSphere(currentObj->GetPos(), selectionRadius, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.y, DEFAULT_SELECTION_COLOR);
 
 			// User has selected previous object
 			if (ImGui::Button("Prev Object")) {
@@ -406,20 +411,28 @@ void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 			attachedActorIndex = Physebs::Clamp<int>(attachedActorIndex, int(m_scene->GetObjects().size() - 1), 0);		// Ensure selected actor doesn't overflow
 			Rigidbody* selectedActor = m_scene->GetObjects()[attachedActorIndex];
 
-			/// Indicate selection via low-poly sphere at selected actor position
-			aie::Gizmos::addSphere(selectedActor->GetPos(), DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.y, DEFAULT_ACTOR_SELECTION_COLOR);
-
 			std::string actorShape;
+
+			float actorSelectionRadius;
 
 			if (selectedActor->GetShape() == SPHERE) {
 				actorShape = "SPHERE";
+
+				actorSelectionRadius = static_cast<Sphere*>(selectedActor)->GetRadius() * 2.f;
 			}
 			if (selectedActor->GetShape() == PLANE) {
 				actorShape = "PLANE";
+
+				actorSelectionRadius = DEFAULT_SELECTION_RADIUS;
 			}
 			if (selectedActor->GetShape() == AA_BOX) {
 				actorShape = "AABB";
+
+				actorSelectionRadius = glm::length(static_cast<AABB*>(selectedActor)->GetExtents()) / 2.f;
 			}
+
+			/// Indicate selection via low-poly sphere at selected actor position
+			aie::Gizmos::addSphere(selectedActor->GetPos(), actorSelectionRadius, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.y, DEFAULT_ACTOR_SELECTION_COLOR);
 
 			ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s #%i", actorShape.c_str(), attachedActorIndex + 1);
 			ImGui::TextColored(ImVec4(1, 0, 0, 1),
@@ -454,20 +467,28 @@ void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 
 			Rigidbody* selectedOther = m_scene->GetObjects()[attachedOtherIndex];
 
-			/// Indicate selection via low-poly sphere at selected actor position
-			aie::Gizmos::addSphere(selectedOther->GetPos(), DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.y, DEFAULT_OTHER_SELECTION_COLOR);
-
 			std::string otherShape;
+
+			float otherSelectionRadius;
 
 			if (selectedOther->GetShape() == SPHERE) {
 				otherShape = "SPHERE";
+
+				otherSelectionRadius = static_cast<Sphere*>(selectedOther)->GetRadius() * 2.f;
 			}
 			if (selectedOther->GetShape() == PLANE) {
 				otherShape = "PLANE";
+
+				otherSelectionRadius = DEFAULT_SELECTION_RADIUS;
 			}
 			if (selectedOther->GetShape() == AA_BOX) {
 				otherShape = "AABB";
+
+				otherSelectionRadius = glm::length(static_cast<AABB*>(selectedOther)->GetExtents()) / 2.f;
 			}
+
+			/// Indicate selection via low-poly sphere at selected actor position
+			aie::Gizmos::addSphere(selectedOther->GetPos(), otherSelectionRadius, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.y, DEFAULT_OTHER_SELECTION_COLOR);
 
 			ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s #%i", otherShape.c_str(), attachedOtherIndex + 1);
 			ImGui::TextColored(ImVec4(0, 0, 1, 1),
@@ -537,10 +558,27 @@ void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 			Constraint* currentConstraint = m_scene->GetConstraints()[selectedConstraintIndex];
 
 			/// Create selection spheres at the position of each attached Rigidbody
+			float attachedActorSelectionRadius = DEFAULT_SELECTION_RADIUS;
+			float attachedOtherSelectionRadius = DEFAULT_SELECTION_RADIUS;
+
+			if (currentConstraint->GetAttachedActor()->GetShape() == SPHERE) {
+				attachedActorSelectionRadius = static_cast<Sphere*>(currentConstraint->GetAttachedActor())->GetRadius() * 2.f;
+			}
+			if (currentConstraint->GetAttachedOther()->GetShape() == SPHERE) {
+				attachedOtherSelectionRadius = static_cast<Sphere*>(currentConstraint->GetAttachedOther())->GetRadius() * 2.f;
+			}
+
+			if (currentConstraint->GetAttachedActor()->GetShape() == AA_BOX) {
+				attachedActorSelectionRadius = glm::length(static_cast<AABB*>(currentConstraint->GetAttachedActor())->GetExtents()) / 2.f;
+			}
+			if (currentConstraint->GetAttachedOther()->GetShape() == AA_BOX) {
+				attachedOtherSelectionRadius = glm::length(static_cast<AABB*>(currentConstraint->GetAttachedOther())->GetExtents()) / 2.f;
+			}
+
 			aie::Gizmos::addSphere(currentConstraint->GetAttachedActor()->GetPos(),
-				DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.x, DEFAULT_CONSTRAINT_SELECTION_COLOR);
+				attachedActorSelectionRadius, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.x, DEFAULT_CONSTRAINT_SELECTION_COLOR);
 			aie::Gizmos::addSphere(currentConstraint->GetAttachedOther()->GetPos(),
-				DEFAULT_SELECTION_RADIUS, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.x, DEFAULT_CONSTRAINT_SELECTION_COLOR);
+				attachedOtherSelectionRadius, DEFAULT_SELECTION_SPHERE.x, DEFAULT_SELECTION_SPHERE.x, DEFAULT_CONSTRAINT_SELECTION_COLOR);
 
 			// Display editable properties of selected constraint
 			/// Universal
@@ -600,19 +638,19 @@ void _2018_03_04_PhysicsEngineDemonstrationApp::update(float deltaTime) {
 
 #pragma region 3D Template Code
 	// draw a simple grid with gizmos
-	vec4 white(1);
-	vec4 black(0, 0, 0, 1);
+	glm::vec4 white(1);
+	glm::vec4 black(0, 0, 0, 1);
 	for (int i = 0; i < 21; ++i) {
-		Gizmos::addLine(vec3(-10 + i, 0, 10),
-			vec3(-10 + i, 0, -10),
+		Gizmos::addLine(glm::vec3(-10 + i, 0, 10),
+			glm::vec3(-10 + i, 0, -10),
 			i == 10 ? white : black);
-		Gizmos::addLine(vec3(10, 0, -10 + i),
-			vec3(-10, 0, -10 + i),
+		Gizmos::addLine(glm::vec3(10, 0, -10 + i),
+			glm::vec3(-10, 0, -10 + i),
 			i == 10 ? white : black);
 	}
 
 	// add a transform so that we can see the axis
-	Gizmos::addTransform(mat4(1));
+	Gizmos::addTransform(glm::mat4(1));
 
 #pragma endregion
 

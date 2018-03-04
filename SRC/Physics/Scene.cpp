@@ -3,13 +3,16 @@
 #include "Physics\Sphere.h"
 #include "Physics\Plane.h"
 #include "Physics\AABB.h"
-#include "Physics\Constraint.h"
+#include "Physics\Spring.h"
 #include "Octree\Octree.h"
 #include <glm/ext.hpp>
 #include <assert.h>
 #include <algorithm>
 #include <random>
+#include "PhysebsUtility_Funcs.h"
+
 using namespace Physebs;
+using namespace tinyxml2;
 
 Scene::Scene(const glm::vec3 & a_gravityForce, const glm::vec3& a_globalForce, 
 	const glm::vec3& a_simulationOrigin, const glm::vec3& a_simulationHalfExtents) 
@@ -131,16 +134,16 @@ void Scene::RemoveObject(Rigidbody * a_obj)
 
 	// Find corresponding iterator to object pointer and remove from vector
 	auto foundIter = std::find(m_objects.begin(), m_objects.end(), a_obj);
-
+	
 	assert(foundIter != m_objects.end() && "Attempted to remove object from scene that it does not own.");
-
+	
 	m_objects.erase(foundIter);
-
+	
 	// If connected via constraint, remove and delete attached constraint
 	for (auto constraint : m_constraints) {
-
+	
 		if (constraint->ContainsObj(a_obj)) {
-
+	
 			RemoveConstraint(constraint);
 			delete constraint;
 		}
@@ -173,6 +176,356 @@ void Scene::RemoveConstraint(Constraint * a_constraint)
 }
 
 /**
+*	@brief Find the first Rigidbody that has the given id and return it.
+*	@param a_id is the id to compare with.
+*	@return Pointer to found Rigidbody or nullptr if no Rigidbodies have that ID.
+*/
+Rigidbody * Scene::GetObjectByID(unsigned int a_id)
+{
+	for (auto obj : m_objects) {
+		
+		if (obj->GetID() == a_id) {
+			return obj;
+		}
+	}
+
+	return nullptr;
+}
+
+/**
+*	@brief Save currently placed objects and constraints to an XML file.
+*	@param a_fileName is the name of the file to write to.
+*	@return XML Error code dictating whether saving was a success or a failure.
+*/
+XMLError Scene::SaveScene(const char * a_fileName)
+{
+	/// 1. Create empty xml document with a dummy node as a root
+	XMLDocument sceneFile;
+	
+	XMLNode* root = sceneFile.NewElement("ROOT");
+	sceneFile.InsertFirstChild(root);
+
+	/// 2. Create Rigidbody root and attach to document root
+	XMLElement* rbRootElement = sceneFile.NewElement("RIGIDBODIES");
+	rbRootElement->SetText((unsigned int)m_objects.size());		// Debugging: Store how many Rigidbodies should be in the XML
+	root->InsertEndChild(rbRootElement);
+
+	/// 3. Loop through all Rigidbodies and create and attach XML elements from them with associated attributes
+
+#pragma region Object Saving
+	for (auto obj : m_objects) {
+
+		XMLElement* rbElement = sceneFile.NewElement("RIGIDBODY");
+
+		/// Universal attributes
+		rbElement->SetAttribute("id", obj->GetID());
+		rbElement->SetAttribute("shape", obj->GetShape());
+		rbElement->SetAttribute("is_dynamic", obj->GetIsDynamic());
+
+		rbElement->SetAttribute("frict", obj->GetFrict());
+		rbElement->SetAttribute("mass", obj->GetMass());
+		rbElement->SetAttribute("restitution", obj->GetRestitution());
+
+		char pos[256];
+		sprintf_s(pos, "%4.4f,%4.4f,%4.4f", obj->GetPos().x, obj->GetPos().y, obj->GetPos().z);
+		rbElement->SetAttribute("pos", pos);
+
+		char vel[256];
+		sprintf_s(vel, "%4.4f,%4.4f,%4.4f", obj->GetVel().x, obj->GetVel().y, obj->GetVel().z);
+		rbElement->SetAttribute("vel", vel);
+
+		char accel[256];
+		sprintf_s(accel, "%4.4f,%4.4f,%4.4f", obj->GetAccel().x, obj->GetAccel().y, obj->GetAccel().z);
+		rbElement->SetAttribute("accel", accel);
+
+		char color[256];
+		sprintf_s(color, "%4.4f,%4.4f,%4.4f,%4.4f", obj->GetColor().r, obj->GetColor().g, obj->GetColor().b, obj->GetColor().a);
+		rbElement->SetAttribute("color", color);
+
+		/// Sphere attributes
+		if (obj->GetShape() == SPHERE) {
+			Sphere* sphere = static_cast<Sphere*>(obj);
+
+			rbElement->SetAttribute("radius", sphere->GetRadius());
+
+			char dimensions[256];
+			sprintf_s(dimensions, "%i,%i", sphere->GetDimensions().x, sphere->GetDimensions().y);
+			rbElement->SetAttribute("dimensions", dimensions);
+		}
+
+		/// Plane attributes
+		if (obj->GetShape() == PLANE) {
+			Plane* plane = static_cast<Plane*>(obj);
+
+			rbElement->SetAttribute("originDist", plane->GetDist());
+
+			char normal[256];
+			sprintf_s(normal, "%4.4f,%4.4f,%4.4f", plane->GetNormal().x, plane->GetNormal().y, plane->GetNormal().z);
+			rbElement->SetAttribute("normal", normal);
+		}
+
+		/// AABB attributes
+		if (obj->GetShape() == AA_BOX) {
+			AABB* box = static_cast<AABB*>(obj);
+
+			char extents[256];
+			sprintf_s(extents, "%4.4f,%4.4f,%4.4f", box->GetExtents().x, box->GetExtents().y, box->GetExtents().z);
+			rbElement->SetAttribute("extents", extents);
+		}
+
+		// Add Rigidbody XML element to its root
+		rbRootElement->InsertEndChild(rbElement);
+
+	}
+#pragma endregion
+
+	/// 4. Create Constraint root and attach to document root
+	XMLElement* ctRootElement = sceneFile.NewElement("CONSTRAINTS");
+	ctRootElement->SetText((unsigned int)m_objects.size());
+	root->InsertEndChild(ctRootElement);
+
+	/// 4. Loop through all Constraints and create and attach XML elements from them with associated attributes
+
+#pragma region Constraint Saving
+	for (auto constraint : m_constraints) {
+
+		XMLElement* ctElement = sceneFile.NewElement("CONSTRAINT");
+
+		/// Universal attributes
+		ctElement->SetAttribute("type", constraint->GetType());
+		ctElement->SetAttribute("attachedActorID", constraint->GetAttachedActor()->GetID());
+		ctElement->SetAttribute("attachedOtherID", constraint->GetAttachedOther()->GetID());
+
+		char color[256];
+		sprintf_s(color, "%4.4f,%4.4f,%4.4f,%4.4f", constraint->GetColor().r, constraint->GetColor().g, constraint->GetColor().b, constraint->GetColor().a);
+		ctElement->SetAttribute("color", color);
+
+		/// Spring attributes
+		if (constraint->GetType() == SPRING) {
+			Spring* spring = static_cast<Spring*>(constraint);
+
+			ctElement->SetAttribute("restLength", spring->GetRestLength());
+			ctElement->SetAttribute("springiness", spring->GetSpringiness());
+			ctElement->SetAttribute("dampening", spring->GetDampening());
+		}
+
+		// Add Constraint XML element to its root
+		ctRootElement->InsertEndChild(ctElement);
+
+	}
+#pragma endregion
+
+	/// 5. Save generated XML data into a file
+	XMLError eResult = sceneFile.SaveFile(a_fileName);
+	XMLCheckResult(eResult);		// Catch and return any possible errors with saving
+
+	return XML_SUCCESS;				// XML saved with no errors
+}
+
+/**
+*	@brief Load objects and constraints from specified XML file into scene.
+*	@param a_fileName is the name of the file to read from.
+*	@return XML Error code dictating whether loading from file was a success.
+*/
+XMLError Scene::LoadScene(const char * a_fileName)
+{
+	/// 1. Clear current constraints and objects before loading new ones (including dynamically allocated memory)
+	for (auto constraint : m_constraints) {
+		delete constraint;
+	}
+	m_constraints.clear();
+	
+	for (auto obj : m_objects) {
+		delete obj;
+	}
+	m_objects.clear();
+
+	/// 2. Create empty XML document and attempt to load in data
+	XMLDocument sceneFile;
+
+	// Create error object to be used for future error checks
+	XMLError eResult = sceneFile.LoadFile(a_fileName);
+	XMLCheckResult(eResult);		// Return early if errors with loading
+
+	/// 3. Get root node of the XML
+	XMLNode* root = sceneFile.FirstChild();
+	if (root == nullptr) return XML_ERROR_FILE_READ_ERROR;				// No root found, return cannot read file
+
+	/// 4. Get Rigidbodies root, loop through all child elements, create Rigidbodies from the data and add them to the scene
+	XMLElement* rbRootElement = root->FirstChildElement("RIGIDBODIES");
+	if (rbRootElement == nullptr) return XML_ERROR_PARSING_ELEMENT;		// File being loaded is not formatted properly. no RIGIDBODIES root
+
+	// Get first Rigidbody element and use as an iterator to loop through all Rigidbodies until at nullptr
+	XMLElement* rbElement = rbRootElement->FirstChildElement("RIGIDBODY");		// NOTE: Do not check if null because it should be possible to load a file with no Rigidbodies
+
+#pragma region Rigidbody extraction
+	while (rbElement) {
+		// Extract data to temporary variables and create Rigidbodies from type and add them into the scene
+		/// Universal attributes
+		int id;
+		eResult = rbElement->QueryIntAttribute("id", &id);
+		XMLCheckResult(eResult);
+
+		int shape;
+		eResult = rbElement->QueryIntAttribute("shape", &shape);
+		XMLCheckResult(eResult);
+
+		bool b_dynamic;
+		eResult = rbElement->QueryBoolAttribute("is_dynamic", &b_dynamic);
+		XMLCheckResult(eResult); // Ensure error is flagged if query does not succeed
+
+		float frict;
+		eResult = rbElement->QueryFloatAttribute("frict", &frict);
+		XMLCheckResult(eResult);
+
+		float mass;
+		eResult = rbElement->QueryFloatAttribute("mass", &mass);
+		XMLCheckResult(eResult);
+
+		float restitution;
+		eResult = rbElement->QueryFloatAttribute("restitution", &restitution);
+		XMLCheckResult(eResult);
+
+		// Use dummy const char* to check if attribute string extraction was unsuccessful due to not using query
+		const char* attributeText = nullptr;
+
+		attributeText = rbElement->Attribute("pos");
+		if (attributeText == NULL) return XML_ERROR_PARSING_ATTRIBUTE;
+		glm::vec3 pos;
+		if (!StringToGLMVec3(attributeText, pos)) { return XML_ERROR_PARSING_TEXT; }
+
+		attributeText = rbElement->Attribute("vel");
+		if (attributeText == NULL) return XML_ERROR_PARSING_ATTRIBUTE;
+		glm::vec3 vel;
+		if (!StringToGLMVec3(attributeText, vel)) { return XML_ERROR_PARSING_TEXT; }
+
+		attributeText = rbElement->Attribute("accel");
+		if (attributeText == NULL) return XML_ERROR_PARSING_ATTRIBUTE;
+		glm::vec3 accel;
+		if (!StringToGLMVec3(attributeText, accel)) { return XML_ERROR_PARSING_TEXT; }	// Convert, and if it fails return with parsing error
+
+		attributeText = rbElement->Attribute("color");
+		if (attributeText == NULL) return XML_ERROR_PARSING_ATTRIBUTE;
+		glm::vec4 color;
+		if (!StringToGLMVec4(attributeText, color)) { return XML_ERROR_PARSING_TEXT; }
+
+		/// Sphere attributes
+		if (shape == SPHERE) {
+
+			float radius;
+			eResult = rbElement->QueryFloatAttribute("radius", &radius);
+			XMLCheckResult(eResult);
+
+			attributeText = rbElement->Attribute("dimensions");
+			if (attributeText == NULL) return XML_ERROR_PARSING_ATTRIBUTE;
+			glm::vec2 dimensions;
+			if (!StringToGLMVec2(attributeText, dimensions)) { return XML_ERROR_PARSING_TEXT; }
+
+			// Construct sphere and add to scene
+			Sphere* newSphere = new Sphere(radius, dimensions, pos, mass, frict, b_dynamic, color, restitution);
+			newSphere->SetID(id);				// Override automatic ID assignment in favor of the value saved for consistency with the constraints
+
+			AddObject(newSphere);
+		}
+
+		/// Plane attributes
+		if (shape == PLANE) {
+
+			float originDist;
+			eResult = rbElement->QueryFloatAttribute("originDist", &originDist);
+			XMLCheckResult(eResult);
+
+			attributeText = rbElement->Attribute("normal");
+			if (attributeText == NULL) return XML_ERROR_PARSING_ATTRIBUTE;
+			glm::vec3 normal;
+			if (!StringToGLMVec3(attributeText, normal)) { return XML_ERROR_PARSING_TEXT; }
+
+			// Construct plane and add to scene
+			Plane* newPlane = new Plane(normal, originDist, pos, mass, frict, b_dynamic, color, restitution);
+			newPlane->SetID(id);
+
+			AddObject(newPlane);
+		}
+
+		/// AABB attributes
+		if (shape == AA_BOX) {
+
+			attributeText = rbElement->Attribute("extents");
+			if (attributeText == NULL) return XML_ERROR_PARSING_ATTRIBUTE;
+			glm::vec3 extents;
+			if (!StringToGLMVec3(attributeText, extents)) { return XML_ERROR_PARSING_TEXT; }
+
+			// Construct AABB and add to scene
+			AABB* newBox = new AABB(extents, pos, mass, frict, b_dynamic, color, restitution);
+			newBox->SetID(id);
+
+			AddObject(newBox);
+		}
+
+		// Iterate to next Rigidbody
+		rbElement = rbElement->NextSiblingElement("RIGIDBODY");
+	}
+#pragma endregion
+
+	/// 5. Get Constraints root, loop through all child elements, create Constraints from the data and add them to the scene
+	XMLElement* ctRootElement = root->FirstChildElement("CONSTRAINTS");
+	if (ctRootElement == nullptr) return XML_ERROR_PARSING_ELEMENT;
+
+	// Get first Constraint element and use as an iterator to loop through all Constraints until at nullptr
+	XMLElement* ctElement = ctRootElement->FirstChildElement("CONSTRAINT");
+
+#pragma region Constraint extraction (NOTE: MUST COME AFTER RIGIDBODIES ARE LOADED IN ORDER TO CORRECTLY ACCESS RIGIDBODY INDICES)
+	while (ctElement) {
+		// Extract data to temporary variables and create Constraints from type and add them into the scene
+		/// Universal attributes
+		int type;
+		eResult = ctElement->QueryIntAttribute("type", &type);
+		XMLCheckResult(eResult);
+
+		int	attachedActorID;
+		eResult = ctElement->QueryIntAttribute("attachedActorID", &attachedActorID);
+		XMLCheckResult(eResult);
+
+		int attachedOtherID;
+		eResult = ctElement->QueryIntAttribute("attachedOtherID", &attachedOtherID);
+		XMLCheckResult(eResult);
+
+		const char* attributeText = nullptr;
+
+		attributeText = ctElement->Attribute("color");
+		if (attributeText == NULL) return XML_ERROR_PARSING_ATTRIBUTE;
+		glm::vec4 color;
+		if (!StringToGLMVec4(attributeText, color)) { return XML_ERROR_PARSING_TEXT; }
+
+		/// Spring attributes
+		if (type == SPRING) {
+
+			float restLength;
+			eResult = ctElement->QueryFloatAttribute("restLength", &restLength);
+			XMLCheckResult(eResult);
+
+			float springiness;
+			eResult = ctElement->QueryFloatAttribute("springiness", &springiness);
+
+			float dampening;
+			eResult = ctElement->QueryFloatAttribute("dampening", &dampening);
+
+			// Construct spring and add to scene
+			AddConstraint(new Spring(GetObjectByID(attachedActorID), GetObjectByID(attachedOtherID), color, springiness, restLength, dampening));
+		}
+
+		// Iterate to next Constraint
+		ctElement = ctElement->NextSiblingElement("CONSTRAINT");
+	}
+#pragma endregion
+
+	// Successfully loaded XML file into scene
+	return XML_SUCCESS;
+
+
+}
+
+/**
 *	@brief Apply defined force to every object in the scene.
 *	@return void.
 */
@@ -195,7 +548,7 @@ void Scene::PartitionCollisions()
 
 	// Calculate volumes to encompass object positions and add corresponding object pointers to 'segment' the scene
 	for (auto currentObj : m_objects) {
-		const float objPos[3] = { currentObj->GetPos().x, currentObj->GetPos().y, currentObj->GetPos().z };
+		float objPos[3] = { currentObj->GetPos().x, currentObj->GetPos().y, currentObj->GetPos().z };
 
 		// Object is outside of simulation extents, remove it from scene as well as delete it, and continue to next one to avoid accessing deleted memory
 		if (!AABB::PointInMinMax(objPos, m_spatialPartitionTree->GetMin(), m_spatialPartitionTree->GetMax())) {
@@ -207,13 +560,88 @@ void Scene::PartitionCollisions()
 		}
 
 		else {
-			// Get node in the volume that contains object position and add object to node
-			PartitionNode& n = m_spatialPartitionTree->getCell(objPos);
-			n.containedObjects.push_back(currentObj);
+#if 1
+			/// Get Partition nodes from the octants that contain the object and add the object to it. NOTE: Nodes will always be initialised on pre-existing or newly created octant.
+			std::vector<PartitionNode*> collidingOctantNodes;
 
-			// Add scene pointer to node so detect collisions function can be called later
-			n.scene = this;
+			// Object is AABB, get nodes by using corners
+			if (currentObj->GetShape() == AA_BOX) {
+				AABB* box = static_cast<AABB*>(currentObj);
 
+				for (auto corner : box->CalculateCorners()) {
+					float cornerPos[3] = { corner.x, corner.y, corner.z };
+
+					// Ensure position isn't out of simulation bounds, if it is then remove the object from scene and delete it and continue to avoid accessing deleted memory
+					if (!AABB::PointInMinMax(cornerPos, m_spatialPartitionTree->GetMin(), m_spatialPartitionTree->GetMax())) {
+
+						RemoveObject(currentObj);
+						delete currentObj;
+
+						continue;
+					}
+
+					PartitionNode& cornerNode = m_spatialPartitionTree->getCell(cornerPos);
+					// Add scene poitner to node so detect collisions can be called later
+					cornerNode.scene = this;
+
+					// No duplicate nodes
+					if (std::find(collidingOctantNodes.begin(), collidingOctantNodes.end(), &cornerNode) == collidingOctantNodes.end()) {
+						collidingOctantNodes.push_back(&cornerNode);
+					}
+
+				}
+			}
+			// Object is plane, skip object in order to avoid duplicate collision detections as planes are infinite and are globally checked
+			else if (currentObj->GetShape() == PLANE) {
+				continue;
+			}
+			// Regular object, use center pos to get node
+			else {
+				PartitionNode& posNode = m_spatialPartitionTree->getCell(objPos);
+				posNode.scene = this;
+				collidingOctantNodes.push_back(&posNode);
+			}
+
+			// Add object to all unique colliding octant nodes
+			for (auto node : collidingOctantNodes) {
+				node->containedObjects.push_back(currentObj);
+			}
+#else
+			// Object is AABB, get nodes by using min and max
+			if (currentObj->GetShape() == AA_BOX) {
+				AABB* box = static_cast<AABB*>(currentObj);
+				float min[3] = { box->CalculateMin().x, box->CalculateMin().y, box->CalculateMin().z };
+				float max[3] = { box->CalculateMax().x, box->CalculateMax().x, box->CalculateMax().z };
+
+				// Find or create nodes based off the points representing the AABBs overall volume
+				PartitionNode& minNode = m_spatialPartitionTree->getCell(min);
+				// Add scene pointer to node so detect collisions function can be called later
+				minNode.scene = this;
+				minNode.containedObjects.push_back(currentObj);
+
+				PartitionNode& maxNode = m_spatialPartitionTree->getCell(max);
+				maxNode.scene = this;
+
+				// Only add object to max node if it isn't a duplicate of min (memory addresses aren't the same)
+				if (&maxNode != &minNode) {
+					maxNode.containedObjects.push_back(currentObj);
+				}
+				else {
+					bool stop = true;
+				}
+			}
+			// Object is plane, skip object in order to avoid duplicate collision detections as planes are infinite and are globally checked
+			else if (currentObj->GetShape() == PLANE) {
+				continue;
+			}
+			// Regular object, use center pos to get node
+			else {
+				PartitionNode& posNode = m_spatialPartitionTree->getCell(objPos);
+				posNode.scene = this;
+				posNode.containedObjects.push_back(currentObj);
+			}
+
+#endif
 			/// Change object colors to reflect what volume they are in
 #if B_VOLUME_COLORS 
 			// Assign object to volume color
@@ -476,10 +904,10 @@ bool Scene::IsColliding_AABB_AABB(Collision & a_collision)
 		if (smallestAxis == overlapVec.x) {
 			collNormal = overlapVec.x < 0 ? glm::vec3(-1, 0, 0) : glm::vec3(1, 0, 0);
 		}
-		if (smallestAxis == overlapVec.y) {
+		else if (smallestAxis == overlapVec.y) {
 			collNormal = overlapVec.y < 0 ? glm::vec3(0, -1, 0) : glm::vec3(0, 1, 0);
 		}
-		if (smallestAxis == overlapVec.z) {
+		else if (smallestAxis == overlapVec.z) {
 			collNormal = overlapVec.z < 0 ? glm::vec3(0, 0, -1) : glm::vec3(0, 0, 1);
 		}
 
@@ -612,15 +1040,14 @@ void Scene::DetectCollisions(const std::vector<Rigidbody*>& a_objects)
 
 	}
 
-#if 1
 #pragma region Octal Space Partitioning: Separate Plane Collision Checks
 	if (b_partitionCollisions && m_objects.size() > 1) {			// No point checking collisions if only one object in the scene
 		// Find and store pointers to all planes in the scene
 		std::vector<Rigidbody*> planes;
 
-		for (auto obj : m_objects) {
-			if (obj->GetShape() == PLANE) {
-				planes.push_back(obj);
+		for (auto o : m_objects) {
+			if (o->GetShape() == PLANE) {
+				planes.push_back(o);
 			}
 		}
 
@@ -628,13 +1055,14 @@ void Scene::DetectCollisions(const std::vector<Rigidbody*>& a_objects)
 		for (auto plane : planes) {
 
 			for (auto obj : m_objects) {
-				// Do not check object if it is a plane or apart of the current volume (avoids duplicate collision detections)
-				if (obj->GetShape() == PLANE || std::find(a_objects.begin(), a_objects.end(), obj) == a_objects.end()) {
+				// Create temporary collision object
+				Collision tempPlaneCollision(plane, obj);
+				
+				// Do not check object if it is a plane
+				if (obj->GetShape() == PLANE) {
 
 					continue;
 				}
-
-				Collision tempPlaneCollision(plane, obj);
 
 				if (obj->GetShape() == SPHERE) {
 
@@ -655,7 +1083,7 @@ void Scene::DetectCollisions(const std::vector<Rigidbody*>& a_objects)
 
 	}
 #pragma endregion
-#endif
+
 }
 
 /**

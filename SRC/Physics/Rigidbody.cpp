@@ -14,6 +14,11 @@ Rigidbody::Rigidbody(
 	m_pos(a_pos), m_mass(a_mass), m_frict(a_frict), 
 	b_dynamic(a_dynamic), m_color(a_color), m_restitution(a_restitution)
 {
+	// Set ID with an incrementing static variable so no two IDs are the same unless wrap-around (highly unlikely)
+	static unsigned int currentID = 0;
+	m_id = currentID;
+	currentID++;
+
 	// Initialise to null vec3 (0, 0, 0)
 	m_vel	= glm::vec3();
 	m_accel = glm::vec3();

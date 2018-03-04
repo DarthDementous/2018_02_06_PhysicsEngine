@@ -24,7 +24,9 @@ namespace Physebs {
 		bool ContainsObj(Rigidbody* a_obj);
 
 		eConstraint GetType() const { return m_type; }
-		float*		GetColorRef()	{ return &m_color.r; }
+
+		const glm::vec4&	GetColor()		{ return m_color; }
+		float*				GetColorRef()	{ return &m_color.r; }
 
 		Rigidbody*	GetAttachedActor() const { return m_attachedActor; }
 		Rigidbody*	GetAttachedOther() const { return m_attachedOther; }

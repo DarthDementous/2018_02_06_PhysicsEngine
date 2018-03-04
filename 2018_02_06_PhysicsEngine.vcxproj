@@ -173,6 +173,12 @@
     <ClCompile Include="SRC\Physics\Scene.cpp" />
     <ClCompile Include="SRC\Physics\Sphere.cpp" />
     <ClCompile Include="SRC\Physics\Spring.cpp" />
+    <ClCompile Include="tinyxml2\tinyxml2.cpp" />
+    <ClCompile Include="tinyxml\tinystr.cpp" />
+    <ClCompile Include="tinyxml\tinyxml.cpp" />
+    <ClCompile Include="tinyxml\tinyxmlerror.cpp" />
+    <ClCompile Include="tinyxml\tinyxmlparser.cpp" />
+    <ClCompile Include="tinyxml\xmltest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="INC\pcl\octree\boost.h" />
@@ -220,6 +226,9 @@
     <ClInclude Include="SimpleOctree\OctreePoint.h" />
     <ClInclude Include="SimpleOctree\Stopwatch.h" />
     <ClInclude Include="SimpleOctree\Vec3.h" />
+    <ClInclude Include="tinyxml2\tinyxml2.h" />
+    <ClInclude Include="tinyxml\tinystr.h" />
+    <ClInclude Include="tinyxml\tinyxml.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -27,6 +27,9 @@ namespace Physebs {
 		virtual void Update(float a_dt);
 		virtual void Draw() = 0;
 
+		unsigned int		GetID() const						{ return m_id; }
+		void				SetID(unsigned int a_id)			{ m_id = a_id; }
+
 		float*				GetPosRef()							{ return &m_pos.x; }
 		const glm::vec3&	GetPos() const						{ return m_pos; }
 		void				SetPos(const glm::vec3& a_pos)		{ m_pos = a_pos; }
@@ -58,6 +61,8 @@ namespace Physebs {
 		float				GetRestitution() const				{ return m_restitution; }
 		float*				GetRestitutionRef()					{ return &m_restitution; }
 	protected:
+		unsigned int m_id;
+
 		glm::vec3 m_pos;
 		glm::vec3 m_vel;
 		glm::vec3 m_accel;	

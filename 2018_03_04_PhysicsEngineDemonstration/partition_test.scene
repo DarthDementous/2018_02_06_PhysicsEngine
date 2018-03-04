@@ -1,0 +1,4 @@
+<ROOT>
+    <RIGIDBODIES>3        <RIGIDBODY id="0" shape="2" is_dynamic="false" frict="1" mass="2" restitution="1" pos="-10.2500,10.0000,0.0000" vel="0.0000,0.0000,0.0000" accel="0.0000,0.0000,0.0000" color="0.0000,0.4667,0.0000,1.0000" extents="0.5000,20.0000,20.0000"/>        <RIGIDBODY id="1" shape="2" is_dynamic="false" frict="1" mass="2" restitution="1" pos="10.2500,10.0000,0.0000" vel="0.0000,0.0000,0.0000" accel="0.0000,0.0000,0.0000" color="0.0000,0.4667,0.0000,1.0000" extents="0.5000,20.0000,20.0000"/>        <RIGIDBODY id="2" shape="0" is_dynamic="true" frict="1" mass="2" restitution="1" pos="10.2500,37.7850,-1.0000" vel="0.0000,-11.6890,0.0000" accel="0.0000,0.0000,0.0000" color="0.0000,0.0000,0.0000,1.0000" radius="2" dimensions="16,16"/></RIGIDBODIES>
+    <CONSTRAINTS>3</CONSTRAINTS>
+</ROOT>

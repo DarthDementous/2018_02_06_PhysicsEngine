@@ -10,15 +10,15 @@
 
 #define DEFAULT_MASS 2.f
 #define DEFAULT_FRICTION 1.f
-#define DEFAULT_RESTITUTION 0.5f
+#define DEFAULT_RESTITUTION 1.0f
 #define DEFAULT_GRAVITY -9.8f
 
 #define DEFAULT_SPHERE glm::ivec2(16, 16)
 #define DEFAULT_AABB glm::vec3(4, 4, 4)
 #define DEFAULT_PLANE_NORMAL glm::vec3(0, 1, 0)
-#define DEFAULT_SIMULATION_HALFEXTENTS glm::vec3(50, 50, 50)
+#define DEFAULT_SIMULATION_HALFEXTENTS glm::vec3(500, 500, 500)
 
-#define MIN_VOLUME_SIZE { 20, 20, 20}
+#define MIN_VOLUME_SIZE { 100, 100, 100}
 
 #define DEFAULT_COLOR glm::vec4(0, 0, 0, 1)
 #define DEFAULT_CONSTRAINT_COLOR glm::vec4(1, 1, 0, 1)
@@ -40,4 +40,5 @@
 #define DEFAULT_SPRING_LENGTH 10.f
 #define DEFAULT_SPRING_DAMPENING 0.5f
 
-
+/// Sourced from: https://shilohjames.wordpress.com/2014/04/27/tinyxml2-tutorial/#XML-SaveXMLDocument
+#define XMLCheckResult(a_eResult) if (a_eResult != XML_SUCCESS) { printf("Error: %i\n", a_eResult); return a_eResult; }

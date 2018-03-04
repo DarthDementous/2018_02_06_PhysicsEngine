@@ -22,6 +22,9 @@ void AABB::Draw()
 {
 	// NOTE: Bootstrap treats extents like half-extents when drawing AABBs despite the parameter name so need to halve extents
 	aie::Gizmos::addAABBFilled(m_pos, m_extents / 2.f, m_color);	
+
+	aie::Gizmos::addSphere(CalculateMin(), 0.5f, DEFAULT_SPHERE.x, DEFAULT_SPHERE.y, glm::vec4(0, 0, 0, 1));
+	aie::Gizmos::addSphere(CalculateMax(), 0.5f, DEFAULT_SPHERE.x, DEFAULT_SPHERE.y, glm::vec4(1, 1, 1, 1));
 }
 
 /**

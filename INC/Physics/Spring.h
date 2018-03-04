@@ -12,9 +12,14 @@ namespace Physebs {
 		virtual void Constrain();
 		virtual void Draw();
 
-		float* GetSpringinessRef()	{ return &m_springiness; }
-		float* GetRestLengthRef()	{ return &m_restLength; }
-		float* GetDampeningRef()	{ return &m_springDampening; }
+		float	GetSpringiness() const	{ return m_springiness; }
+		float*	GetSpringinessRef()		{ return &m_springiness; }
+		
+		float	GetRestLength() const	{ return m_restLength; }
+		float*	GetRestLengthRef()		{ return &m_restLength; }
+		
+		float	GetDampening() const	{ return m_springDampening; }
+		float*	GetDampeningRef()		{ return &m_springDampening; }
 	protected:
 		float m_springiness;		// Scale of force to apply to attached rigidbodies
 		float m_restLength;			// Distance attached rigidbodies must be at before being constrained
